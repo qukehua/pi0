@@ -1,0 +1,80 @@
+W0330 10:07:55.288600 346313 torch/distributed/run.py:766] 
+W0330 10:07:55.288600 346313 torch/distributed/run.py:766] *****************************************
+W0330 10:07:55.288600 346313 torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0330 10:07:55.288600 346313 torch/distributed/run.py:766] *****************************************
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+10:08:16.503 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+10:08:16.503 [I] Config: pi0_right_arm_pytorch (train.py:615)
+10:08:16.503 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+10:08:16.503 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+10:08:16.503 [I] Config: pi0_right_arm_pytorch (train.py:615)
+10:08:16.503 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+10:08:16.503 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/my_pi0_training/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+10:08:16.503 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/my_pi0_training/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+10:08:16.779 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:08:16.779 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:08:16.780 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:08:16.780 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:08:16.900 [I] Norm stats not found in /share/0xyj/model3_openpi0.5/my_pi0_training/assets/pi0_right_arm_pytorch/local/right_arm_box_pick, skipping. (config.py:199)
+10:08:16.900 [I] 本地数据集: local/right_arm_box_pick -> /share/0xyj/model3_openpi0.5/lerobot_dataset (train.py:443)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 628, in <module>
+[rank0]:     main(_config.cli())
+[rank0]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 624, in main
+[rank0]:     train_loop(config)
+[rank0]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 454, in train_loop
+[rank0]:     raise FileNotFoundError(f"Checkpoint dir not found: {config.checkpoint_dir}")
+[rank0]: FileNotFoundError: Checkpoint dir not found: /share/0xyj/model3_openpi0.5/my_pi0_training/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1
+10:08:17.005 [I] Norm stats not found in /share/0xyj/model3_openpi0.5/my_pi0_training/assets/pi0_right_arm_pytorch/local/right_arm_box_pick, skipping. (config.py:199)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 628, in <module>
+[rank1]:     main(_config.cli())
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 624, in main
+[rank1]:     train_loop(config)
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 454, in train_loop
+[rank1]:     raise FileNotFoundError(f"Checkpoint dir not found: {config.checkpoint_dir}")
+[rank1]: FileNotFoundError: Checkpoint dir not found: /share/0xyj/model3_openpi0.5/my_pi0_training/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1
+[rank0]:[W330 10:08:17.680639573 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W0330 10:08:18.227041 346313 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346431 closing signal SIGTERM
+E0330 10:08:18.290883 346313 torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 0 (pid: 346430) of binary: /share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/python3
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 892, in main
+    run(args)
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 883, in run
+    elastic_launch(
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 139, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 270, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/share/0xyj/model3_openpi0.5/my_pi0_training/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-03-30_10:08:18
+  host      : aibox-rbb2050829b6-9df9dc7db-wz6vj
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 346430)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

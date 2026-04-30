@@ -1,0 +1,62 @@
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+21:41:07.014 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:572)
+21:41:07.014 [I] Config: pi0_right_arm_pytorch (train.py:573)
+21:41:07.014 [I] Exp: right_arm_box_pick_v1 (train.py:574)
+21:41:07.016 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/openpi-main/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:575)
+21:41:07.186 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:578)
+21:41:07.186 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:578)
+21:41:07.278 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+21:41:07.278 [I] 本地数据集: local/right_arm_box_pick -> /share/0xyj/model3_openpi0.5/lerobot_dataset (train.py:403)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: 1459076239 (1459076239-111) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run ezyc5n77
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /share/0xyj/model3_openpi0.5/openpi-main/wandb/run-20260329_214110-ezyc5n77
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run right_arm_box_pick_v1
+wandb: ⭐️ View project at https://wandb.ai/1459076239-111/pi0_right_arm
+wandb: 🚀 View run at https://wandb.ai/1459076239-111/pi0_right_arm/runs/ezyc5n77
+21:41:16.676 [I] WandB run: https://wandb.ai/1459076239-111/pi0_right_arm/runs/ezyc5n77 (train.py:297)
+21:41:16.749 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+21:41:16.751 [I] data_config: DataConfig(repo_id='local/right_arm_box_pick', asset_id='local/right_arm_box_pick', norm_stats={'state': NormStats(mean=array([ 1.27326596,  0.65767813, -1.25116122, -1.47907686, -0.3908022 ,
+        0.74543566,  1.45302522,  0.32803413]), std=array([0.12190208, 0.21362343, 0.14658208, 0.21861626, 0.15475415,
+       0.22495042, 0.15097259, 0.46948007]), q01=array([ 0.9790197 ,  0.13417393, -1.68204713, -1.795874  , -0.8020224 ,
+       -0.02736851,  1.15285814,  0.        ]), q99=array([ 1.55023646,  1.01356506, -0.94732982, -0.77460158, -0.06457369,
+        1.11265612,  1.76629055,  1.        ])), 'actions': NormStats(mean=array([-8.35342416e-06,  9.02039847e-06,  7.00588425e-05, -5.74508049e-05,
+       -7.40017713e-05,  7.57096641e-05,  7.56182417e-05,  0.00000000e+00]), std=array([0.00387518, 0.00505277, 0.00293895, 0.0059589 , 0.00305642,
+       0.00482239, 0.00425592, 0.07019126]), q01=array([-0.01003401, -0.0127933 , -0.0077318 , -0.01968556, -0.00734782,
+       -0.01521927, -0.01120507,  0.        ]), q99=array([0.01245817, 0.01644099, 0.01036553, 0.01530305, 0.01136033,
+       0.016249  , 0.01362925, 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'images': {'cam_high': 'observation.images.cam_high', 'cam_right_wrist': 'observation.images.cam_right_wrist', 'cam_left_wrist': 'observation.images.cam_left_wrist'}, 'state': 'observation.state', 'actions': 'action'})], outputs=[]), data_transforms=Group(inputs=(MyRobotInputs(image_keys=('cam_high', 'cam_right_wrist', 'cam_left_wrist')), DeltaActions(mask=(True, True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, False)), MyRobotOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt='the right arm picks up the box and places it back to its original position'), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7f0a083c18d0>, discrete_state_input=False), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=False, action_sequence_keys=('action',), prompt_from_task=False, rlds_data_dir=None, action_space=None, datasets=()) (data_loader.py:243)
+[PATCH] 使用本地数据集: /share/0xyj/model3_openpi0.5/lerobot_dataset
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 586, in <module>
+    main(_config.cli())
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 582, in main
+    train_loop(config)
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 427, in train_loop
+    loader = _data_loader.create_data_loader(config, framework="pytorch", shuffle=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 256, in create_data_loader
+    return create_torch_data_loader(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 302, in create_torch_data_loader
+    dataset = create_torch_dataset(data_config, action_horizon, model_config)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 147, in patched_create_torch_dataset
+    dataset_meta = lerobot_dataset.LeRobotDatasetMetadata(repo_id, root=root)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/lerobot/common/datasets/lerobot_dataset.py", line 95, in __init__
+    self.load_metadata()
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 195, in patched_load_metadata
+    self.episodes_stats = {ep['episode_index']: {} for ep in self.episodes}
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 195, in <dictcomp>
+    self.episodes_stats = {ep['episode_index']: {} for ep in self.episodes}
+                           ~~^^^^^^^^^^^^^^^^^
+TypeError: 'int' object is not subscriptable
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mright_arm_box_pick_v1[0m at: [34mhttps://wandb.ai/1459076239-111/pi0_right_arm/runs/ezyc5n77[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20260329_214110-ezyc5n77/logs[0m

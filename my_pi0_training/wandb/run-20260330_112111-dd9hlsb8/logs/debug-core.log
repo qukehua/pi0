@@ -1,0 +1,8 @@
+{"time":"2026-03-30T11:21:12.223711868+08:00","level":"INFO","msg":"main: starting server","port-filename":"/tmp/tmpn9lt9umf/port-2355647.txt","pid":2355647,"log-level":0,"disable-analytics":false,"shutdown-on-parent-exit":false,"enable-dcgm-profiling":false}
+{"time":"2026-03-30T11:21:12.224225319+08:00","level":"INFO","msg":"server: will exit if parent process dies","ppid":2355647}
+{"time":"2026-03-30T11:21:12.22420164+08:00","level":"INFO","msg":"server: accepting connections","addr":{"Name":"/tmp/wandb-2355647-2356135-4026675530/socket","Net":"unix"}}
+{"time":"2026-03-30T11:21:12.409951003+08:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"1(@)"}
+{"time":"2026-03-30T11:21:12.419475225+08:00","level":"INFO","msg":"handleInformInit: received","streamId":"dd9hlsb8","id":"1(@)"}
+{"time":"2026-03-30T11:21:13.429130254+08:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"dd9hlsb8","id":"1(@)"}
+{"time":"2026-03-30T11:21:20.089064313+08:00","level":"INFO","msg":"connection: cancelling request","id":"1(@)","requestId":"ok2nws4zins3"}
+{"time":"2026-03-30T11:28:32.93082084+08:00","level":"INFO","msg":"server: parent process exited, terminating service process"}

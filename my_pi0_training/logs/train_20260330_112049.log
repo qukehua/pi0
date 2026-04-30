@@ -1,0 +1,150 @@
+W0330 11:20:52.609848 2355541 torch/distributed/run.py:766] 
+W0330 11:20:52.609848 2355541 torch/distributed/run.py:766] *****************************************
+W0330 11:20:52.609848 2355541 torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0330 11:20:52.609848 2355541 torch/distributed/run.py:766] *****************************************
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+11:21:09.953 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+11:21:09.953 [I] Config: pi0_right_arm_pytorch (train.py:615)
+11:21:09.953 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+11:21:09.956 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/openpi-main/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+11:21:09.956 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+11:21:09.956 [I] Config: pi0_right_arm_pytorch (train.py:615)
+11:21:09.956 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+11:21:09.956 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/openpi-main/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+11:21:10.163 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+11:21:10.163 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+11:21:10.178 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+11:21:10.178 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+11:21:10.251 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+11:21:10.251 [I] 本地数据集: local/right_arm_box_pick -> /share/0xyj/model3_openpi0.5/lerobot_dataset (train.py:443)
+11:21:10.412 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+11:21:10.490 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+11:21:10.491 [I] data_config: DataConfig(repo_id='local/right_arm_box_pick', asset_id='local/right_arm_box_pick', norm_stats={'state': NormStats(mean=array([ 1.27326596,  0.65767813, -1.25116122, -1.47907686, -0.3908022 ,
+        0.74543566,  1.45302522,  0.32803413]), std=array([0.12190208, 0.21362343, 0.14658208, 0.21861626, 0.15475415,
+       0.22495042, 0.15097259, 0.46948007]), q01=array([ 0.9790197 ,  0.13417393, -1.68204713, -1.795874  , -0.8020224 ,
+       -0.02736851,  1.15285814,  0.        ]), q99=array([ 1.55023646,  1.01356506, -0.94732982, -0.77460158, -0.06457369,
+        1.11265612,  1.76629055,  1.        ])), 'actions': NormStats(mean=array([-8.35342416e-06,  9.02039847e-06,  7.00588425e-05, -5.74508049e-05,
+       -7.40017713e-05,  7.57096641e-05,  7.56182417e-05,  0.00000000e+00]), std=array([0.00387518, 0.00505277, 0.00293895, 0.0059589 , 0.00305642,
+       0.00482239, 0.00425592, 0.07019126]), q01=array([-0.01003401, -0.0127933 , -0.0077318 , -0.01968556, -0.00734782,
+       -0.01521927, -0.01120507,  0.        ]), q99=array([0.01245817, 0.01644099, 0.01036553, 0.01530305, 0.01136033,
+       0.016249  , 0.01362925, 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'images': {'cam_high': 'observation.images.cam_high', 'cam_right_wrist': 'observation.images.cam_right_wrist', 'cam_left_wrist': 'observation.images.cam_left_wrist'}, 'state': 'observation.state', 'actions': 'action'})], outputs=[]), data_transforms=Group(inputs=(MyRobotInputs(image_keys=('cam_high', 'cam_right_wrist', 'cam_left_wrist')), DeltaActions(mask=(True, True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, False)), MyRobotOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt='the right arm picks up the box and places it back to its original position'), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7f50c8e38310>, discrete_state_input=False), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=False, action_sequence_keys=('action',), prompt_from_task=False, rlds_data_dir=None, action_space=None, datasets=()) (data_loader.py:243)
+[PATCH] 使用本地数据集: /share/0xyj/model3_openpi0.5/lerobot_dataset
+[PATCH] 已 patch load_metadata: 86 episodes，跳过 episodes_stats 读取
+11:21:11.705 [I] local_batch_size: 32 (data_loader.py:324)
+wandb: Currently logged in as: 1459076239 (1459076239-111) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run dd9hlsb8
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /share/0xyj/model3_openpi0.5/my_pi0_training/wandb/run-20260330_112111-dd9hlsb8
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Resuming run right_arm_box_pick_v1
+wandb: ⭐️ View project at https://wandb.ai/1459076239-111/pi0_right_arm
+wandb: 🚀 View run at https://wandb.ai/1459076239-111/pi0_right_arm/runs/dd9hlsb8
+11:21:15.091 [I] WandB run: https://wandb.ai/1459076239-111/pi0_right_arm/runs/dd9hlsb8 (train.py:337)
+11:21:15.173 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+11:21:15.174 [I] data_config: DataConfig(repo_id='local/right_arm_box_pick', asset_id='local/right_arm_box_pick', norm_stats={'state': NormStats(mean=array([ 1.27326596,  0.65767813, -1.25116122, -1.47907686, -0.3908022 ,
+        0.74543566,  1.45302522,  0.32803413]), std=array([0.12190208, 0.21362343, 0.14658208, 0.21861626, 0.15475415,
+       0.22495042, 0.15097259, 0.46948007]), q01=array([ 0.9790197 ,  0.13417393, -1.68204713, -1.795874  , -0.8020224 ,
+       -0.02736851,  1.15285814,  0.        ]), q99=array([ 1.55023646,  1.01356506, -0.94732982, -0.77460158, -0.06457369,
+        1.11265612,  1.76629055,  1.        ])), 'actions': NormStats(mean=array([-8.35342416e-06,  9.02039847e-06,  7.00588425e-05, -5.74508049e-05,
+       -7.40017713e-05,  7.57096641e-05,  7.56182417e-05,  0.00000000e+00]), std=array([0.00387518, 0.00505277, 0.00293895, 0.0059589 , 0.00305642,
+       0.00482239, 0.00425592, 0.07019126]), q01=array([-0.01003401, -0.0127933 , -0.0077318 , -0.01968556, -0.00734782,
+       -0.01521927, -0.01120507,  0.        ]), q99=array([0.01245817, 0.01644099, 0.01036553, 0.01530305, 0.01136033,
+       0.016249  , 0.01362925, 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'images': {'cam_high': 'observation.images.cam_high', 'cam_right_wrist': 'observation.images.cam_right_wrist', 'cam_left_wrist': 'observation.images.cam_left_wrist'}, 'state': 'observation.state', 'actions': 'action'})], outputs=[]), data_transforms=Group(inputs=(MyRobotInputs(image_keys=('cam_high', 'cam_right_wrist', 'cam_left_wrist')), DeltaActions(mask=(True, True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, False)), MyRobotOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt='the right arm picks up the box and places it back to its original position'), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7fafff5c6750>, discrete_state_input=False), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=False, action_sequence_keys=('action',), prompt_from_task=False, rlds_data_dir=None, action_space=None, datasets=()) (data_loader.py:243)
+[PATCH] 使用本地数据集: /share/0xyj/model3_openpi0.5/lerobot_dataset
+[PATCH] 已 patch load_metadata: 86 episodes，跳过 episodes_stats 读取
+11:21:16.105 [I] local_batch_size: 32 (data_loader.py:324)
+11:22:14.060 [I] Gradient checkpointing disabled (sufficient VRAM) (train.py:488)
+11:22:18.988 [I] Gradient checkpointing disabled (sufficient VRAM) (train.py:488)
+11:22:19.466 [I] Loading weights: /share/0xyj/model3_openpi0.5/pi0_base/model.safetensors (train.py:499)
+11:22:19.467 [I] Loading weights: /share/0xyj/model3_openpi0.5/pi0_base/model.safetensors (train.py:499)
+11:22:25.733 [I] Weights loaded: 3.50B params (train.py:502)
+11:22:25.888 [I] Weights loaded: 3.50B params (train.py:502)
+11:22:36.696 [I] Resumed from step 10000 (train.py:421)
+11:22:36.698 [I] Host: aibox-rbb2050829b6-9df9dc7db-wz6vj (train.py:529)
+11:22:36.699 [I] GPU: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:533)
+11:22:36.699 [I] num_train_steps=50000, batch_size=64 (train.py:534)
+11:22:36.699 [I] warmup=500, peak_lr=1.00e-04, decay=50000 (train.py:535)
+11:22:36.699 [I] save_interval=1000, keep_period=0 (train.py:536)
+11:22:36.699 [I] WandB enabled: True (train.py:537)
+Training:  20%|██        | 10000/50000 [00:00<?, ?it/s]11:22:37.157 [I] Resumed from step 10000 (train.py:421)
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torchvision/io/_video_deprecation_warning.py:5: UserWarning: The video decoding and encoding capabilities of torchvision are deprecated from version 0.22 and will be removed in version 0.24. We recommend that you migrate to TorchCodec, where we'll consolidate the future decoding/encoding capabilities of PyTorch: https://github.com/pytorch/torchcodec
+  warnings.warn(
+Forcing gradient checkpointing to be enabled for Gemma expert model
+Forcing gradient checkpointing to be enabled for Gemma expert model
+11:25:27.362 [I] step=10000/50000 loss=3.4416 lr=9.21e-05 grad_norm=44.36 elapsed=170.7s (train.py:581)
+Training:  20%|██        | 10001/50000 [02:50<1896:13:05, 170.66s/it]Training:  20%|██        | 10001/50000 [02:50<1896:13:05, 170.66s/it, loss=3.4416, lr=9.21e-05]Training:  20%|██        | 10002/50000 [02:54<803:15:15, 72.30s/it, loss=3.4416, lr=9.21e-05]  Training:  20%|██        | 10002/50000 [02:54<803:15:15, 72.30s/it, loss=1.3128, lr=9.21e-05]Training:  20%|██        | 10003/50000 [02:57<453:29:13, 40.82s/it, loss=1.3128, lr=9.21e-05]Training:  20%|██        | 10003/50000 [02:57<453:29:13, 40.82s/it, loss=0.9494, lr=9.21e-05]wandb: WARNING Tried to log to step 10000 that is less than the current step 10371. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+Training:  20%|██        | 10004/50000 [03:00<289:08:20, 26.03s/it, loss=0.9494, lr=9.21e-05]Training:  20%|██        | 10004/50000 [03:00<289:08:20, 26.03s/it, loss=2.1591, lr=9.21e-05]Training:  20%|██        | 10005/50000 [03:04<198:36:56, 17.88s/it, loss=2.1591, lr=9.21e-05]Training:  20%|██        | 10005/50000 [03:04<198:36:56, 17.88s/it, loss=2.1838, lr=9.21e-05]Training:  20%|██        | 10006/50000 [03:07<143:48:22, 12.94s/it, loss=2.1838, lr=9.21e-05]Training:  20%|██        | 10006/50000 [03:07<143:48:22, 12.94s/it, loss=3.1591, lr=9.21e-05]Training:  20%|██        | 10007/50000 [03:10<108:58:45,  9.81s/it, loss=3.1591, lr=9.21e-05]Training:  20%|██        | 10007/50000 [03:10<108:58:45,  9.81s/it, loss=1.7460, lr=9.21e-05]Training:  20%|██        | 10008/50000 [03:14<86:11:37,  7.76s/it, loss=1.7460, lr=9.21e-05] Training:  20%|██        | 10008/50000 [03:14<86:11:37,  7.76s/it, loss=1.5945, lr=9.21e-05]Training:  20%|██        | 10009/50000 [03:36<136:17:52, 12.27s/it, loss=1.5945, lr=9.21e-05]Training:  20%|██        | 10009/50000 [03:36<136:17:52, 12.27s/it, loss=2.8536, lr=9.21e-05]Training:  20%|██        | 10010/50000 [03:39<106:03:37,  9.55s/it, loss=2.8536, lr=9.21e-05]Training:  20%|██        | 10010/50000 [03:39<106:03:37,  9.55s/it, loss=1.2174, lr=9.21e-05]Training:  20%|██        | 10011/50000 [03:43<84:59:43,  7.65s/it, loss=1.2174, lr=9.21e-05] Training:  20%|██        | 10011/50000 [03:43<84:59:43,  7.65s/it, loss=7.2255, lr=9.20e-05]Training:  20%|██        | 10012/50000 [03:46<70:35:41,  6.36s/it, loss=7.2255, lr=9.20e-05]Training:  20%|██        | 10012/50000 [03:46<70:35:41,  6.36s/it, loss=2.8639, lr=9.20e-05]Training:  20%|██        | 10013/50000 [03:50<60:46:18,  5.47s/it, loss=2.8639, lr=9.20e-05]Training:  20%|██        | 10013/50000 [03:50<60:46:18,  5.47s/it, loss=3.3016, lr=9.20e-05]Training:  20%|██        | 10014/50000 [03:53<53:41:36,  4.83s/it, loss=3.3016, lr=9.20e-05]Training:  20%|██        | 10014/50000 [03:53<53:41:36,  4.83s/it, loss=1.7887, lr=9.20e-05]Training:  20%|██        | 10015/50000 [03:56<48:51:59,  4.40s/it, loss=1.7887, lr=9.20e-05]Training:  20%|██        | 10015/50000 [03:56<48:51:59,  4.40s/it, loss=1.1711, lr=9.20e-05]Training:  20%|██        | 10016/50000 [04:00<45:30:48,  4.10s/it, loss=1.1711, lr=9.20e-05]Training:  20%|██        | 10016/50000 [04:00<45:30:48,  4.10s/it, loss=1.8951, lr=9.20e-05]Training:  20%|██        | 10017/50000 [04:15<81:19:13,  7.32s/it, loss=1.8951, lr=9.20e-05]Training:  20%|██        | 10017/50000 [04:15<81:19:13,  7.32s/it, loss=5.0843, lr=9.20e-05]Training:  20%|██        | 10018/50000 [04:18<68:11:11,  6.14s/it, loss=5.0843, lr=9.20e-05]Training:  20%|██        | 10018/50000 [04:18<68:11:11,  6.14s/it, loss=3.4982, lr=9.20e-05]Training:  20%|██        | 10019/50000 [04:21<59:05:46,  5.32s/it, loss=3.4982, lr=9.20e-05]Training:  20%|██        | 10019/50000 [04:21<59:05:46,  5.32s/it, loss=5.2916, lr=9.20e-05]Training:  20%|██        | 10020/50000 [04:25<52:41:29,  4.74s/it, loss=5.2916, lr=9.20e-05]Training:  20%|██        | 10020/50000 [04:25<52:41:29,  4.74s/it, loss=11.2038, lr=9.20e-05]Training:  20%|██        | 10021/50000 [04:28<48:22:37,  4.36s/it, loss=11.2038, lr=9.20e-05]Training:  20%|██        | 10021/50000 [04:28<48:22:37,  4.36s/it, loss=3.2971, lr=9.20e-05] Training:  20%|██        | 10022/50000 [04:32<45:04:46,  4.06s/it, loss=3.2971, lr=9.20e-05]Training:  20%|██        | 10022/50000 [04:32<45:04:46,  4.06s/it, loss=15.6418, lr=9.20e-05]Training:  20%|██        | 10023/50000 [04:35<42:46:12,  3.85s/it, loss=15.6418, lr=9.20e-05]Training:  20%|██        | 10023/50000 [04:35<42:46:12,  3.85s/it, loss=5.5183, lr=9.20e-05] Training:  20%|██        | 10024/50000 [04:38<41:13:55,  3.71s/it, loss=5.5183, lr=9.20e-05]Training:  20%|██        | 10024/50000 [04:38<41:13:55,  3.71s/it, loss=1.6050, lr=9.20e-05]Training:  20%|██        | 10025/50000 [04:59<96:24:59,  8.68s/it, loss=1.6050, lr=9.20e-05]Training:  20%|██        | 10025/50000 [04:59<96:24:59,  8.68s/it, loss=2.9271, lr=9.20e-05]Training:  20%|██        | 10026/50000 [05:02<79:01:05,  7.12s/it, loss=2.9271, lr=9.20e-05]Training:  20%|██        | 10026/50000 [05:02<79:01:05,  7.12s/it, loss=5.8810, lr=9.20e-05]Training:  20%|██        | 10027/50000 [05:06<66:33:13,  5.99s/it, loss=5.8810, lr=9.20e-05]Training:  20%|██        | 10027/50000 [05:06<66:33:13,  5.99s/it, loss=27.3098, lr=9.20e-05]Training:  20%|██        | 10028/50000 [05:09<57:52:27,  5.21s/it, loss=27.3098, lr=9.20e-05]Training:  20%|██        | 10028/50000 [05:09<57:52:27,  5.21s/it, loss=2.7779, lr=9.20e-05] Training:  20%|██        | 10029/50000 [05:12<51:54:10,  4.67s/it, loss=2.7779, lr=9.20e-05]Training:  20%|██        | 10029/50000 [05:12<51:54:10,  4.67s/it, loss=8.0391, lr=9.20e-05]Training:  20%|██        | 10030/50000 [05:16<47:34:02,  4.28s/it, loss=8.0391, lr=9.20e-05]Training:  20%|██        | 10030/50000 [05:16<47:34:02,  4.28s/it, loss=2.6632, lr=9.20e-05]Training:  20%|██        | 10031/50000 [05:19<44:33:42,  4.01s/it, loss=2.6632, lr=9.20e-05]Training:  20%|██        | 10031/50000 [05:19<44:33:42,  4.01s/it, loss=5.7108, lr=9.20e-05]Training:  20%|██        | 10032/50000 [05:22<42:24:08,  3.82s/it, loss=5.7108, lr=9.20e-05]Training:  20%|██        | 10032/50000 [05:22<42:24:08,  3.82s/it, loss=6.1383, lr=9.20e-05]Training:  20%|██        | 10033/50000 [05:41<90:13:29,  8.13s/it, loss=6.1383, lr=9.20e-05]Training:  20%|██        | 10033/50000 [05:41<90:13:29,  8.13s/it, loss=9.9668, lr=9.20e-05]Training:  20%|██        | 10034/50000 [05:44<74:41:31,  6.73s/it, loss=9.9668, lr=9.20e-05]Training:  20%|██        | 10034/50000 [05:44<74:41:31,  6.73s/it, loss=2.1513, lr=9.20e-05]Training:  20%|██        | 10035/50000 [05:47<63:32:52,  5.72s/it, loss=2.1513, lr=9.20e-05]Training:  20%|██        | 10035/50000 [05:47<63:32:52,  5.72s/it, loss=9.8109, lr=9.20e-05]Training:  20%|██        | 10036/50000 [05:51<55:47:33,  5.03s/it, loss=9.8109, lr=9.20e-05]Training:  20%|██        | 10036/50000 [05:51<55:47:33,  5.03s/it, loss=4.5472, lr=9.20e-05]Training:  20%|██        | 10037/50000 [05:54<50:19:41,  4.53s/it, loss=4.5472, lr=9.20e-05]Training:  20%|██        | 10037/50000 [05:54<50:19:41,  4.53s/it, loss=3.2184, lr=9.20e-05]W0330 11:28:31.606060 2355541 torch/distributed/elastic/agent/server/api.py:719] Received 15 death signal, shutting down workers
+W0330 11:28:31.610349 2355541 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2355647 closing signal SIGTERM
+W0330 11:28:31.613972 2355541 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2355648 closing signal SIGTERM
+/usr/lib/python3.11/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 32 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/usr/lib/python3.11/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 32 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 892, in main
+    run(args)
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 883, in run
+    elastic_launch(
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 139, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 261, in launch_agent
+    result = agent.run()
+             ^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/metrics/api.py", line 138, in wrapper
+    result = f(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py", line 711, in run
+    result = self._invoke_run(role)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py", line 870, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 2355541 got signal: 15

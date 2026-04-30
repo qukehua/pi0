@@ -1,0 +1,28 @@
+11:21:15.091 [I] WandB run: https://wandb.ai/1459076239-111/pi0_right_arm/runs/dd9hlsb8 (train.py:337)
+11:21:15.173 [I] Loaded norm stats from /share/0xyj/model3_openpi0.5/openpi-main/assets/pi0_right_arm_pytorch/local/right_arm_box_pick (config.py:196)
+11:21:15.174 [I] data_config: DataConfig(repo_id='local/right_arm_box_pick', asset_id='local/right_arm_box_pick', norm_stats={'state': NormStats(mean=array([ 1.27326596,  0.65767813, -1.25116122, -1.47907686, -0.3908022 ,
+        0.74543566,  1.45302522,  0.32803413]), std=array([0.12190208, 0.21362343, 0.14658208, 0.21861626, 0.15475415,
+       0.22495042, 0.15097259, 0.46948007]), q01=array([ 0.9790197 ,  0.13417393, -1.68204713, -1.795874  , -0.8020224 ,
+       -0.02736851,  1.15285814,  0.        ]), q99=array([ 1.55023646,  1.01356506, -0.94732982, -0.77460158, -0.06457369,
+        1.11265612,  1.76629055,  1.        ])), 'actions': NormStats(mean=array([-8.35342416e-06,  9.02039847e-06,  7.00588425e-05, -5.74508049e-05,
+       -7.40017713e-05,  7.57096641e-05,  7.56182417e-05,  0.00000000e+00]), std=array([0.00387518, 0.00505277, 0.00293895, 0.0059589 , 0.00305642,
+       0.00482239, 0.00425592, 0.07019126]), q01=array([-0.01003401, -0.0127933 , -0.0077318 , -0.01968556, -0.00734782,
+       -0.01521927, -0.01120507,  0.        ]), q99=array([0.01245817, 0.01644099, 0.01036553, 0.01530305, 0.01136033,
+       0.016249  , 0.01362925, 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'images': {'cam_high': 'observation.images.cam_high', 'cam_right_wrist': 'observation.images.cam_right_wrist', 'cam_left_wrist': 'observation.images.cam_left_wrist'}, 'state': 'observation.state', 'actions': 'action'})], outputs=[]), data_transforms=Group(inputs=(MyRobotInputs(image_keys=('cam_high', 'cam_right_wrist', 'cam_left_wrist')), DeltaActions(mask=(True, True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, False)), MyRobotOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt='the right arm picks up the box and places it back to its original position'), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7fafff5c6750>, discrete_state_input=False), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=False, action_sequence_keys=('action',), prompt_from_task=False, rlds_data_dir=None, action_space=None, datasets=()) (data_loader.py:243)
+[PATCH] 使用本地数据集: /share/0xyj/model3_openpi0.5/lerobot_dataset
+[PATCH] 已 patch load_metadata: 86 episodes，跳过 episodes_stats 读取
+11:21:16.105 [I] local_batch_size: 32 (data_loader.py:324)
+11:22:18.988 [I] Gradient checkpointing disabled (sufficient VRAM) (train.py:488)
+11:22:19.467 [I] Loading weights: /share/0xyj/model3_openpi0.5/pi0_base/model.safetensors (train.py:499)
+11:22:25.733 [I] Weights loaded: 3.50B params (train.py:502)
+11:22:36.696 [I] Resumed from step 10000 (train.py:421)
+11:22:36.698 [I] Host: aibox-rbb2050829b6-9df9dc7db-wz6vj (train.py:529)
+11:22:36.699 [I] GPU: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:533)
+11:22:36.699 [I] num_train_steps=50000, batch_size=64 (train.py:534)
+11:22:36.699 [I] warmup=500, peak_lr=1.00e-04, decay=50000 (train.py:535)
+11:22:36.699 [I] save_interval=1000, keep_period=0 (train.py:536)
+11:22:36.699 [I] WandB enabled: True (train.py:537)
+Training:  20%|██        | 10000/50000 [00:00<?, ?it/s]11:25:27.362 [I] step=10000/50000 loss=3.4416 lr=9.21e-05 grad_norm=44.36 elapsed=170.7s (train.py:581)
+Forcing gradient checkpointing to be enabled for Gemma expert model
+Training:  20%|██        | 10003/50000 [02:57<453:29:13, 40.82s/it, loss=0.9494, lr=9.21e-05]wandb: WARNING Tried to log to step 10000 that is less than the current step 10371. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+Training:  20%|██        | 10037/50000 [05:54<50:19:41,  4.53s/it, loss=3.2184, lr=9.20e-05] 

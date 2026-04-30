@@ -1,0 +1,54 @@
+W0413 13:57:36.241792 33623 torch/distributed/run.py:766] 
+W0413 13:57:36.241792 33623 torch/distributed/run.py:766] *****************************************
+W0413 13:57:36.241792 33623 torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0413 13:57:36.241792 33623 torch/distributed/run.py:766] *****************************************
+[INFO] 已注册自定义配置: pi0_dual_arm_16d
+[INFO] 已注册自定义配置: pi0_dual_arm_16d
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/train_wrapper.py", line 28, in <module>
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/train_wrapper.py", line 28, in <module>
+    exec(open(_original_script).read())
+  File "<string>", line 48, in <module>
+  File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 10, in <module>
+    exec(open(_original_script).read())
+  File "<string>", line 48, in <module>
+  File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 10, in <module>
+    import lerobot.datasets.lerobot_dataset as lerobot_dataset
+ModuleNotFoundError: No module named 'lerobot.datasets'
+    import lerobot.datasets.lerobot_dataset as lerobot_dataset
+ModuleNotFoundError: No module named 'lerobot.datasets'
+W0413 13:57:51.399751 33623 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 33715 closing signal SIGTERM
+E0413 13:57:51.513564 33623 torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 0 (pid: 33714) of binary: /share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/python3
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 892, in main
+    run(args)
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 883, in run
+    elastic_launch(
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 139, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 270, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/share/0xyj/model3_openpi0.5/openpi-main/train_wrapper.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-04-13_13:57:51
+  host      : aibox-r856a9e5fed8-c686cc64b-vh57t
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 33714)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

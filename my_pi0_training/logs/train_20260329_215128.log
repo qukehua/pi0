@@ -1,0 +1,3 @@
+  File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 226
+    self.tasks, self.task_to_task_index = ds_utils.load_tasks(self.root)
+IndentationError: unexpected indent

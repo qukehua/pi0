@@ -1,0 +1,1434 @@
+# Realman RM75-6FB 机械臂 π₀/π₀.5 训练指南
+
+本文档介绍如何使用 OpenPI 框架在 Realman RM75-6FB 机械臂上训练 π₀/π₀.5 模型。
+
+> **文档版本**: v1.2  
+> **最后更新**: 2026-01-20  
+> **适用框架**: OpenPI + RoboCOIN unified_deploy
+
+---
+
+## 快速开始
+
+如果你已经熟悉流程，以下是完整的命令序列：
+
+```bash
+# 1. 转换数据集 action 字段
+python realman_openpi_training/convert_action_to_next_state.py \
+    --input-path /path/to/original/dataset \
+    --output-path /path/to/converted/dataset \
+    --num-workers 8
+
+# 2. 重新计算 episodes_stats（可选但推荐）
+conda activate robocoin
+python realman_openpi_training/recompute_episodes_stats.py \
+    --dataset-path /path/to/converted/dataset \
+    --original-dataset-path /path/to/original/dataset \
+    --num-workers 8
+
+# 3. 计算 OpenPI 归一化统计量
+cd openpi
+uv run ../realman_openpi_training/compute_norm_stats.py \
+    --config-name pi0_realman_pytorch \
+    --dataset-path /path/to/converted/dataset
+
+# 4. 开始训练
+uv run ../realman_openpi_training/train.py pi0_realman_pytorch --exp_name=my_exp
+```
+
+---
+
+## 术语表
+
+| 术语 | 含义 |
+|------|------|
+| **cam0_rgb** | 腕部相机 (wrist camera)，安装在机械臂末端 |
+| **cam1_rgb** | 基座相机 (base camera)，固定在工作台上 |
+| **base_0_rgb** | OpenPI 模型的第一个相机槽位（通常用于基座视角） |
+| **left_wrist_0_rgb** | OpenPI 模型的第二个相机槽位（通常用于腕部视角） |
+| **delta action** | 相对动作，表示当前状态与目标状态的差值 |
+| **absolute action** | 绝对动作，表示目标状态的绝对值 |
+| **action_horizon** | 动作序列长度（每次推理预测多少步动作） |
+| **action_dim** | 动作维度（模型内部固定为 32，实际使用 8 维） |
+
+---
+
+## 相机命名约定
+
+在 Realman 数据集和整个训练/部署流程中，相机命名遵循以下约定：
+
+```
+cam0_rgb: 腕部相机 (wrist camera)
+    - 安装位置：机械臂末端/夹爪附近
+    - 视角特点：近距离观察操作对象
+    - 映射到 OpenPI：left_wrist_0_rgb
+
+cam1_rgb: 基座相机 (base camera)
+    - 安装位置：工作台上的固定位置
+    - 视角特点：全局视角，观察整个工作空间
+    - 映射到 OpenPI：base_0_rgb
+
+cam2_rgb+: 其他视角的基座相机（如有）
+    - 额外的固定视角相机
+    - 映射到 OpenPI：right_wrist_0_rgb 或其他
+```
+
+**重要**：训练时和推理时的映射必须保持一致！
+
+---
+
+## 1. 环境准备
+
+### 1.1 安装 OpenPI
+
+```bash
+cd openpi
+uv sync
+```
+
+### 1.2 训练脚本说明
+
+**重要**：为了避免修改 OpenPI 官方源码，我们使用独立的训练模块 `realman_openpi_training/`。
+
+```
+workspace/
+├── openpi/                      # 官方仓库（不修改）
+└── realman_openpi_training/     # 独立训练模块
+    ├── train.py                 # 训练入口
+    ├── realman_config.py        # Realman 配置
+    ├── compute_norm_stats.py    # 计算归一化统计量
+    ├── convert_action_to_next_state.py  # 数据集转换
+    ├── recompute_episodes_stats.py      # 重新计算统计量
+    └── README.md
+```
+
+训练命令：
+```bash
+cd openpi
+uv run ../realman_openpi_training/train.py <config_name> --exp_name=<exp_name>
+```
+
+### 1.3 离线训练准备（无网络环境）
+
+如果你的训练服务器没有网络访问，需要提前下载以下文件：
+
+#### 1.3.1 必需文件
+
+| 文件 | 用途 | 下载路径 |
+|------|------|----------|
+| PaliGemma Tokenizer | 文本分词器 | `gs://big_vision/paligemma_tokenizer.model` |
+| π₀ Base 权重 | π₀ 基础模型 | `gs://openpi-assets/checkpoints/pi0_base/params` |
+| π₀.5 Base 权重 | π₀.5 基础模型 | `gs://openpi-assets/checkpoints/pi05_base/params` |
+| π₀.5 DROID 权重 | DROID 预训练（推荐微调起点） | `gs://openpi-assets/checkpoints/pi05_droid/params` + `/assets` |
+
+#### 1.3.2 下载方法
+
+**方法一：使用 OpenPI 下载工具（推荐）**
+
+```bash
+cd openpi
+source .venv/bin/activate
+
+# 下载 Tokenizer
+python -c "
+from openpi.shared.download import maybe_download
+maybe_download('gs://big_vision/paligemma_tokenizer.model')
+"
+
+# 下载 π₀ base 权重
+python -c "
+from openpi.shared.download import maybe_download
+maybe_download('gs://openpi-assets/checkpoints/pi0_base/params')
+"
+
+# 下载 π₀.5 base 权重
+python -c "
+from openpi.shared.download import maybe_download
+maybe_download('gs://openpi-assets/checkpoints/pi05_base/params')
+"
+
+# 下载 π₀.5 DROID 权重（推荐用于微调）
+python -c "
+from openpi.shared.download import maybe_download
+maybe_download('gs://openpi-assets/checkpoints/pi05_droid/params')
+maybe_download('gs://openpi-assets/checkpoints/pi05_droid/assets')
+"
+```
+
+文件将下载到 `~/.cache/openpi/` 目录。
+
+**方法二：使用 gsutil 直接下载**
+
+```bash
+# 安装 gsutil
+pip install gsutil
+
+# 下载文件
+gsutil -m cp -r gs://big_vision/paligemma_tokenizer.model ~/.cache/openpi/big_vision/
+gsutil -m cp -r gs://openpi-assets/checkpoints/pi0_base ~/.cache/openpi/openpi-assets/checkpoints/
+gsutil -m cp -r gs://openpi-assets/checkpoints/pi05_base ~/.cache/openpi/openpi-assets/checkpoints/
+gsutil -m cp -r gs://openpi-assets/checkpoints/pi05_droid ~/.cache/openpi/openpi-assets/checkpoints/
+```
+
+#### 1.3.3 转换为 PyTorch 格式
+
+OpenPI 官方权重是 JAX 格式，需要转换为 PyTorch 格式才能用于 PyTorch 训练：
+
+```bash
+cd openpi
+source .venv/bin/activate
+
+# 转换 π₀.5 DROID 权重（推荐）
+python examples/convert_jax_model_to_pytorch.py \
+    --config=pi05_droid \
+    --checkpoint_dir=~/.cache/openpi/openpi-assets/checkpoints/pi05_droid/params \
+    --output_dir=data/openpi-assets/checkpoints/pi05_droid_pytorch
+
+# 转换 π₀ base 权重
+python examples/convert_jax_model_to_pytorch.py \
+    --config=pi0_base \
+    --checkpoint_dir=~/.cache/openpi/openpi-assets/checkpoints/pi0_base/params \
+    --output_dir=data/openpi-assets/checkpoints/pi0_base_pytorch
+```
+
+转换后的 PyTorch 权重将保存在 `data/openpi-assets/checkpoints/` 目录。
+
+#### 1.3.4 离线环境部署
+
+将以下文件打包传输到离线服务器：
+
+```
+~/.cache/openpi/
+├── big_vision/
+│   └── paligemma_tokenizer.model
+└── openpi-assets/
+    └── checkpoints/
+        ├── pi0_base/
+        ├── pi05_base/
+        └── pi05_droid/
+
+openpi/data/openpi-assets/checkpoints/
+├── pi0_base_pytorch/
+│   └── model.safetensors
+└── pi05_droid_pytorch/
+    └── model.safetensors
+```
+
+### 1.4 数据集格式要求
+
+数据集需要符合 LeRobot v2.1 格式：
+
+```
+dataset/
+├── meta/
+│   ├── info.json           # 数据集元信息
+│   ├── episodes.jsonl      # Episode 索引
+│   ├── episodes_stats.jsonl # Episode 统计量
+│   └── tasks.jsonl         # 任务描述
+├── data/
+│   └── chunk-000/          # Parquet 数据文件
+└── videos/
+    └── chunk-000/          # MP4 视频文件
+```
+
+**数据特征定义**（`info.json`）：
+
+```json
+{
+    "features": {
+        "observation.state": {
+            "dtype": "float32",
+            "shape": [14],
+            "names": [
+                "joint_1_rad", "joint_2_rad", "joint_3_rad", "joint_4_rad",
+                "joint_5_rad", "joint_6_rad", "joint_7_rad", "gripper_open",
+                "eef_pos_x_m", "eef_pos_y_m", "eef_pos_z_m",
+                "eef_rot_euler_x_rad", "eef_rot_euler_y_rad", "eef_rot_euler_z_rad"
+            ]
+        },
+        "action": {
+            "dtype": "float32",
+            "shape": [8],
+            "names": ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7", "gripper"]
+        },
+        "observation.images.cam0_rgb": {
+            "dtype": "video",
+            "shape": [480, 640, 3]
+        }
+    }
+}
+```
+
+---
+
+## 2. 数据预处理（关键步骤）
+
+### 2.1 数据集 Action 转换（遥操数据集必须）
+
+**重要**：如果你的数据集是通过遥操作采集的，需要先进行 action 字段转换。
+
+#### 2.1.1 为什么需要转换？
+
+遥操数据集中的 `action` 字段通常是当前帧发送给机械臂的目标指令（command），而不是 OpenPI 期望的下一帧状态：
+
+| 数据类型 | action 含义 | DeltaActions 计算结果 |
+|----------|-------------|----------------------|
+| 原始遥操数据 | `action_t = command_t` | 跟随误差（约 0.01-0.02 rad） |
+| 转换后数据 | `action_t[:7] = state_{t+1}[:7]` | 真正的动作（状态变化量） |
+
+OpenPI 使用 `delta_mask = make_bool_mask(7, -1)`：前 7 维（关节）用 delta 模式，第 8 维（夹爪）用 absolute 模式。
+
+- 原始数据：计算出的是"跟随误差"，不是真正的动作意图
+- 转换后：计算出的是 `state_{t+1} - state_t`，即真正的状态变化量
+
+#### 2.1.2 执行转换
+
+```bash
+# 转换数据集（不会覆盖原始数据）
+python realman_openpi_training/convert_action_to_next_state.py \
+    --input-path /path/to/original/dataset \
+    --output-path /path/to/converted/dataset \
+    --num-workers 8
+```
+
+**参数说明**：
+
+| 参数 | 说明 |
+|------|------|
+| `--input-path` | 原始数据集路径（LeRobot v2.1 格式） |
+| `--output-path` | 输出数据集路径（必须不存在或为空） |
+| `--num-workers` | 并行处理的 worker 数量（默认 4） |
+| `--joint-dim` | 关节维度（默认 7），只转换前 N 维，夹爪保持原样 |
+
+**转换逻辑**：
+- 前 7 维（关节）：`action_t[:7] = state_{t+1}[:7]`
+- 第 8 维（夹爪）：保持原样（absolute 模式，不转换）
+- 最后一帧：`action_t[:7] = state_t[:7]`（无下一帧，因此 delta = 0）
+
+**输出说明**：
+- 视频文件通过符号链接复用，不会复制（节省空间）
+- 只修改 parquet 文件中的 action 字段
+- 转换完成后会显示原始/新 delta 的统计信息
+
+#### 2.1.3 验证转换结果
+
+转换脚本会输出统计信息：
+
+```
+[INFO] 原始 delta (action - state) 最大值:
+       平均: 0.015234 rad
+       最大: 0.023456 rad
+[INFO] 新 delta (next_state - state) 最大值:
+       平均: 0.001234 rad
+       最大: 0.002345 rad
+```
+
+新 delta 应该明显小于原始 delta（约 10 倍差距）。
+
+### 2.2 重新计算 episodes_stats（可选但推荐）
+
+由于 action 字段已更改，需要重新计算统计量：
+
+```bash
+# 在 RoboCOIN 环境中运行
+conda activate robocoin
+
+python realman_openpi_training/recompute_episodes_stats.py \
+    --dataset-path /path/to/converted/dataset \
+    --original-dataset-path /path/to/original/dataset \
+    --num-workers 8
+```
+
+**参数说明**：
+
+| 参数 | 说明 |
+|------|------|
+| `--dataset-path` | 转换后的数据集路径 |
+| `--original-dataset-path` | 原始数据集路径（用于复制非 action 统计量） |
+| `--num-workers` | 并行 worker 数量（默认 8） |
+
+此脚本会：
+- 从原始数据集复制其他字段的统计量
+- 只重新计算 action 字段的统计量
+- 覆盖原有的 `episodes_stats.jsonl` 文件
+
+### 2.3 计算 OpenPI 归一化统计量（norm_stats）
+
+这是训练前必须的步骤：
+
+```bash
+cd openpi
+
+uv run ../realman_openpi_training/compute_norm_stats.py \
+    --config-name pi0_realman_pytorch \
+    --dataset-path /path/to/converted/dataset
+```
+
+**参数说明**：
+
+| 参数 | 说明 |
+|------|------|
+| `--config-name` | 训练配置名称（必填） |
+| `--dataset-path` | 数据集路径（必填） |
+| `--output-path` | 自定义输出路径（可选，推荐使用以避免路径不匹配） |
+| `--num-workers` | 并行 worker 数量（默认 8） |
+| `--state-dim` | state 维度（默认 8） |
+| `--action-dim` | action 维度（默认 8） |
+
+**输出文件**：
+```
+openpi/assets/{config_name}/{repo_id}/norm_stats.json
+```
+
+例如：`openpi/assets/pi0_realman_pytorch/local/realman_teleop_0111_right_plate_50/norm_stats.json`
+
+> **⚠️ 重要警告：repo_id 路径匹配问题**
+> 
+> 输出路径中的 `{repo_id}` 来自配置文件 `realman_config.py` 中的 `repo_id` 字段。
+> 如果你修改了数据集但没有同步修改 `repo_id`，会导致：
+> - norm_stats 保存到了旧路径
+> - 训练时在新路径下找不到 norm_stats.json
+> 
+> **解决方案**：
+> 1. 确保 `realman_config.py` 中的 `repo_id` 与你的数据集名称一致
+> 2. 或者使用 `--output-path` 参数显式指定输出路径
+> 
+> 详见 [Q9: 训练时报错 "norm_stats.json not found"](#q9-训练时报错-norm_statsjson-not-found但我已经计算过了)
+
+**注意事项**：
+1. **必须在训练前计算**：如果缺少 norm_stats.json，训练会报错
+2. **深度图自动过滤**：如果数据集包含深度图，会自动过滤，不会导致错误
+3. **更换数据集需重新计算**：如果更换数据集或修改 transforms，需要重新计算
+4. **检查 repo_id 一致性**：确保配置文件中的 `repo_id` 与实际数据集路径匹配
+
+---
+
+## 3. 训练配置
+
+### 3.1 可用配置
+
+| 配置名称 | 模型 | 说明 | 显存需求 |
+|----------|------|------|----------|
+| `pi0_realman_pytorch` | π₀ | 使用本地 PyTorch 权重（推荐） | ~24GB |
+| `pi05_realman_pytorch` | π₀.5 | 使用本地 PyTorch 权重 | ~24GB |
+| `pi0_realman` | π₀ | 全量微调，使用 GCS 权重（需要网络） | ~40GB |
+| `pi0_realman_lora` | π₀ | LoRA 微调，低显存 | ~16GB |
+| `pi05_realman` | π₀.5 | 全量微调 | ~48GB |
+| `pi0_fast_realman` | π₀-FAST | 快速推理版本 | ~40GB |
+| `pi0_realman_base_only_pytorch` | π₀ | 只使用基座相机 | ~24GB |
+| `pi0_realman_wrist_only_pytorch` | π₀ | 只使用腕部相机 | ~24GB |
+
+### 3.2 修改数据集路径
+
+编辑 `realman_openpi_training/realman_config.py`，修改 `DEFAULT_DATASET_PATH` 和相关配置：
+
+```python
+# 修改默认数据集路径
+DEFAULT_DATASET_PATH = "/path/to/your/converted/dataset"
+
+# 在配置中修改
+data=LeRobotRealmanDataConfig(
+    # 数据集标识符
+    repo_id="local/your_dataset_name",
+    # 本地数据集路径（绝对路径）
+    local_root=DEFAULT_DATASET_PATH,
+    use_delta_joint_actions=True,
+    default_prompt="pick and place the object",
+    # 图像观测 key 列表
+    image_keys=("observation.images.cam1_rgb", "observation.images.cam0_rgb"),
+),
+```
+
+### 3.3 图像输入配置（image_keys）
+
+通过 `image_keys` 参数指定需要使用的图像观测：
+
+```python
+image_keys=("observation.images.cam1_rgb", "observation.images.cam0_rgb")
+```
+
+**映射规则**：图像按照 `image_keys` 中的顺序映射到 OpenPI 模型的相机槽位：
+
+| 顺序 | OpenPI 槽位 | 说明 |
+|------|-------------|------|
+| 第 1 个 | `base_0_rgb` | 基座相机 |
+| 第 2 个 | `left_wrist_0_rgb` | 左腕部相机 |
+| 第 3 个 | `right_wrist_0_rgb` | 右腕部相机 |
+
+**配置示例**：
+
+```python
+# 双相机：基座 + 腕部（推荐）
+image_keys=(
+    "observation.images.cam1_rgb",  # → base_0_rgb
+    "observation.images.cam0_rgb",  # → left_wrist_0_rgb
+)
+
+# 单相机：只使用基座相机
+image_keys=("observation.images.cam1_rgb",)  # → base_0_rgb
+
+# 单相机：只使用腕部相机
+image_keys=("observation.images.cam0_rgb",)  # → base_0_rgb（第一个总是映射到 base）
+```
+
+**注意**：深度图（如 `cam0_depth`, `cam1_depth`）会被自动过滤，不会导致统计量验证错误。
+
+### 3.4 任务指令配置（Prompt）
+
+OpenPI 支持两种 prompt 来源：
+
+| 来源 | 配置方式 | 适用场景 |
+|------|----------|----------|
+| `default_prompt` | 配置文件中固定字符串 | 单任务数据集 |
+| 数据集 task 字段 | `prompt_from_task=True` | 多任务数据集 |
+
+**单任务数据集配置**：
+
+```python
+data=LeRobotRealmanDataConfig(
+    repo_id="local/realman_teleop_0111_right_plate_50",
+    use_delta_joint_actions=True,
+    default_prompt="pick up the yellow banana and put it in the white plate",
+    prompt_from_task=False,  # 默认值，可省略
+),
+```
+
+**多任务数据集配置**：
+
+```python
+data=LeRobotRealmanDataConfig(
+    repo_id="local/realman_multi_task_dataset",
+    use_delta_joint_actions=True,
+    prompt_from_task=True,  # 从数据集 task 字段读取
+    default_prompt=None,
+),
+```
+
+### 3.5 LoRA 微调说明
+
+LoRA（Low-Rank Adaptation）是一种参数高效微调技术：
+- **优势**：可训练参数从 ~3B 降到 ~10M，显存需求从 ~40GB 降到 ~16GB
+- **适用场景**：显存有限（如 3090/4090）、快速实验、小数据集微调
+
+```python
+# realman_config.py 中的 LoRA 配置
+model=pi0_config.Pi0Config(
+    paligemma_variant="gemma_2b_lora",
+    action_expert_variant="gemma_300m_lora"
+),
+```
+
+---
+
+## 4. 开始训练
+
+### 4.1 训练环境说明
+
+**重要**：训练和推理使用不同的 Python 环境：
+
+| 阶段 | 环境 | 激活方式 |
+|------|------|----------|
+| 训练 | OpenPI 环境 | `cd openpi && source .venv/bin/activate` 或 `uv run` |
+| 推理 | RoboCOIN 环境 | `conda activate robocoin` |
+
+### 4.2 π₀ 训练（使用 PyTorch 权重）
+
+```bash
+cd openpi
+
+# 单卡训练
+uv run ../realman_openpi_training/train.py pi0_realman_pytorch \
+    --exp_name=realman_pi0_v1 \
+    --num_train_steps=30000 \
+    --batch_size=8
+
+# 多卡训练（DDP）
+torchrun --standalone --nnodes=1 --nproc_per_node=2 \
+    ../realman_openpi_training/train.py pi0_realman_pytorch \
+    --exp_name=realman_pi0_v1 \
+    --batch_size=16
+```
+
+### 4.3 π₀.5 训练（使用 PyTorch 权重）
+
+```bash
+cd openpi
+
+uv run ../realman_openpi_training/train.py pi05_realman_pytorch \
+    --exp_name=realman_pi05_v1 \
+    --num_train_steps=30000 \
+    --batch_size=8
+```
+
+### 4.4 LoRA 微调（低显存）
+
+```bash
+uv run ../realman_openpi_training/train.py pi0_realman_lora --exp_name=realman_pi0_lora_v1
+```
+
+### 4.5 常用训练参数
+
+```bash
+uv run ../realman_openpi_training/train.py pi0_realman_pytorch \
+    --exp_name=my_experiment \
+    --num_train_steps=50000 \
+    --batch_size=8 \
+    --save_interval=2000 \
+    --log_interval=100 \
+    --wandb_enabled=True
+```
+
+**参数说明**：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--exp_name` | 必填 | 实验名称，用于 checkpoint 目录 |
+| `--num_train_steps` | 30000 | 总训练步数 |
+| `--batch_size` | 8 | 全局 batch size（多 GPU 会均分） |
+| `--save_interval` | 1000 | 每多少步保存 checkpoint |
+| `--log_interval` | 100 | 每多少步记录日志 |
+| `--keep_period` | 5000 | 保留 step % keep_period == 0 的 checkpoint |
+| `--wandb_enabled` | True | 是否启用 WandB 日志 |
+| `--resume` | False | 是否从上次 checkpoint 恢复训练 |
+| `--overwrite` | False | 是否覆盖已有 checkpoint 目录 |
+
+### 4.6 多 GPU 训练
+
+**batch_size 是全局总数**，会自动均分到每个 GPU：
+
+```bash
+# 2 GPU 训练，每个 GPU 实际 batch_size = 16 / 2 = 8
+torchrun --standalone --nnodes=1 --nproc_per_node=2 \
+    ../realman_openpi_training/train.py pi0_realman_pytorch \
+    --exp_name=my_exp --batch_size=16
+```
+
+### 4.7 Checkpoint 保存
+
+Checkpoint 保存在：
+```
+openpi/checkpoints/{config_name}/{exp_name}/{step}/
+├── model.safetensors          # PyTorch 模型权重
+├── optimizer.pt               # 优化器状态
+├── metadata.pt                # 训练元数据
+└── assets/
+    └── <asset_id>/
+        └── norm_stats.json    # 归一化统计量
+```
+
+---
+
+## 5. 部署推理
+
+由于 OpenPI 和 RoboCOIN 使用不同的 Python 环境（OpenPI 需要 JAX，RoboCOIN 是 PyTorch），OpenPI 模型需要使用**三终端部署架构**：
+
+### 5.1 与 ACT/Diffusion 模型的对比
+
+| 模型类型 | 所需终端数 | 原因 | 启动复杂度 |
+|----------|-----------|------|-----------|
+| ACT / Diffusion | **2 个** | 单环境部署，policy_server 直接加载模型 | 简单 |
+| OpenPI (π₀/π₀.5) | **3 个** | 双环境部署，JAX 和 PyTorch 环境隔离 | 中等 |
+
+### 5.2 三终端部署架构
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          三终端部署架构                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  终端 1 (openpi)          终端 2 (robocoin)           终端 3 (robocoin)      │
+│  ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      │
+│  │ serve_realman_  │      │ policy_server   │      │ realman_client  │      │
+│  │ policy.py       │      │                 │      │                 │      │
+│  │                 │      │                 │      │                 │      │
+│  │  π₀ 模型推理     │◄────►│  gRPC Server    │◄────►│  机器人控制      │      │
+│  │  :8000 (WS)     │      │  :50051 (gRPC)  │      │  相机采集        │      │
+│  └─────────────────┘      └─────────────────┘      └─────────────────┘      │
+│         ▲                         ▲                         ▲               │
+│         │                         │                         │               │
+│    openpi .venv              robocoin conda            robocoin conda       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| 终端 | 环境 | 组件 | 端口 | 作用 |
+|------|------|------|------|------|
+| 终端 1 | openpi (.venv) | `serve_realman_policy.py` | :8000 (WebSocket) | π₀/π₀.5 模型推理 |
+| 终端 2 | robocoin (conda) | `policy_server.py` | :50051 (gRPC) | 协议转换、动作队列 |
+| 终端 3 | robocoin (conda) | `realman_client.py` | - | 机器人控制、相机采集 |
+
+### 5.3 三终端启动命令
+
+**终端 1：启动 OpenPI 推理服务（openpi 环境）**
+
+```bash
+# 进入 openpi 目录，激活 .venv
+cd /home/ubuntu/Desktop/Workspace/lerobot_policy_deploy/openpi
+source .venv/bin/activate
+
+# ⚠️ 重要：禁用 Triton 编译（避免首次推理时长时间编译导致 WebSocket 超时）
+export PYTORCH_DISABLE_TRITON=1
+export TORCH_COMPILE_DISABLE=1
+
+# 使用 Realman 推理脚本（自动注册配置、自动加载 norm_stats）
+python ../realman_openpi_training/serve_realman_policy.py \
+    --config=pi0_realman_inference \
+    --checkpoint=/path/to/openpi/checkpoints/pi0_realman_pytorch/exp_name/30000 \
+    --prompt="pick up the yellow banana and put it in the white plate" \
+    --port=8000
+```
+
+**环境变量说明**：
+
+| 环境变量 | 作用 | 推荐值 |
+|---------|------|--------|
+| `PYTORCH_DISABLE_TRITON` | 禁用 Triton JIT 编译 | `1` |
+| `TORCH_COMPILE_DISABLE` | 禁用 torch.compile 优化 | `1` |
+
+**为什么需要禁用 Triton？**
+- PyTorch 2.0+ 默认在首次推理时进行 Triton JIT 编译（需要 1-2 分钟）
+- 编译期间 WebSocket 服务无法响应，导致客户端 keepalive ping 超时
+- 禁用后服务立即可用，推理速度仅损失 10-20%
+- 详见 [BUG-002](./bug_records.md#bug-002-pytorch-triton-编译导致-websocket-连接超时)
+
+**终端 2：启动 RoboCOIN 部署服务（robocoin 环境）**
+
+```bash
+# 激活 robocoin 环境
+conda activate robocoin
+cd /home/ubuntu/Desktop/Workspace/lerobot_policy_deploy/RoboCOIN
+
+# 启动 policy_server（远程模式，连接 OpenPI 服务）
+python -m lerobot.extensions.unified_deploy.server.policy_server \
+    --policy_type=openpi \
+    --pretrained_path=dummy \
+    --openpi_remote_host=localhost:8000 \
+    --device=cuda \
+    --n_action_steps=10
+```
+
+**policy_server 参数说明**：
+
+| 参数 | 说明 | 默认值 | 推荐值 |
+|------|------|--------|--------|
+| `--n_action_steps` | 每次推理返回的动作步数 | 50 (action_horizon) | 10-20 |
+| `--device` | 推理设备 | `cuda` | `cuda` |
+| `--openpi_remote_host` | OpenPI 服务地址 | - | `localhost:8000` |
+
+**终端 3：启动 Robot Client（机器人端）**
+
+```bash
+cd /home/ubuntu/Desktop/Workspace/lerobot_policy_deploy/RoboCOIN
+
+python -m lerobot.extensions.unified_deploy.client.realman_client \
+    --robot_ip="192.168.1.18" \
+    --server_address=127.0.0.1:50051 \
+    --frequency=10 \
+    --n_action_steps=10 \
+    --camera_configs="{ cam0_rgb: {type: intelrealsense, serial_number_or_name: '230422272673', fps: 30, width: 640, height: 480}, cam1_rgb: {type: intelrealsense, serial_number_or_name: '420122071413', fps: 30, width: 640, height: 480} }" \
+    --visualize
+```
+
+**realman_client 参数说明**：
+
+| 参数 | 说明 | 默认值 | 推荐值 |
+|------|------|--------|--------|
+| `--frequency` | 控制循环频率（Hz） | 10 | 10-30 |
+| `--n_action_steps` | 每次推理返回的动作步数 | 50 | 10-20 |
+| `--visualize` | 是否可视化相机图像 | False | 调试时启用 |
+
+**注意**：`n_action_steps` 可以在终端 2 或终端 3 中任意一个指定，终端 2 的设置优先级更高。
+
+### 5.4 serve_realman_policy.py 参数说明
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `--config` | 配置名称 | `pi0_realman_inference`, `pi05_realman_inference` |
+| `--checkpoint` | checkpoint 目录路径 | `/path/to/checkpoints/30000` |
+| `--prompt` | 默认任务指令 | `"pick up the banana"` |
+| `--port` | WebSocket 服务端口 | `8000` |
+| `--record` | 记录策略行为用于调试 | （flag）|
+
+**脚本特性**：
+- 自动注册 `realman_config.py` 中定义的所有 Realman 配置
+- 自动从 checkpoint 目录检测 `asset_id` 并加载 `norm_stats.json`
+- 无需修改 OpenPI 官方源码
+
+### 5.5 环境准备
+
+在 RoboCOIN 环境中需要安装 `openpi-client` 包：
+
+```bash
+conda activate robocoin
+pip install -e /path/to/openpi/packages/openpi-client/
+```
+
+这是一个轻量级包，只包含 WebSocket 客户端，不引入 JAX 等重依赖。
+
+### 5.6 使用 OpenPI 官方客户端（直接调用）
+
+如果不需要 RoboCOIN 框架，也可以直接使用 OpenPI 官方客户端：
+
+```python
+from openpi_client.websocket_client_policy import WebsocketClientPolicy
+
+# 连接到 serve_realman_policy.py 服务
+policy = WebsocketClientPolicy(host="localhost", port=8000)
+
+# 发送观测，获取动作
+action = policy.infer({
+    "state": current_state,  # [8,] float32
+    "images": {
+        "base_0_rgb": base_image,        # [H, W, 3] uint8
+        "left_wrist_0_rgb": wrist_image, # [H, W, 3] uint8
+    },
+    "prompt": "pick up the yellow banana and put it in the white plate"
+})
+```
+
+### 5.7 n_action_steps 参数详解
+
+`n_action_steps` 参数控制每次推理后实际执行的动作步数，是平衡响应性和效率的关键参数。
+
+#### 5.7.1 基本概念
+
+| 参数 | 说明 | OpenPI 默认值 | 推荐值 |
+|------|------|--------------|--------|
+| `action_horizon` | 模型预测的动作序列长度（训练时固定） | 50 | - |
+| `action_dim` | 模型内部动作维度（固定） | 32 | - |
+| `n_action_steps` | 每次推理后实际返回的动作步数 | 50 | 10-20 |
+
+#### 5.7.2 工作原理
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   n_action_steps 工作流程                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. 模型推理                                                 │
+│     └─ 输出: [action_horizon, action_dim] = [50, 32]       │
+│                                                             │
+│  2. 维度截取                                                 │
+│     └─ 截取: [:, :8] → [50, 8] (7 joints + 1 gripper)      │
+│                                                             │
+│  3. 步数截取 (n_action_steps)                               │
+│     └─ 截取: [:n_action_steps] → [10, 8]                   │
+│                                                             │
+│  4. 动作队列                                                 │
+│     └─ 放入 action_queue (FIFO 无界队列)                    │
+│                                                             │
+│  5. 执行循环 (frequency Hz)                                 │
+│     ├─ 每个周期从队列取 1 个动作                            │
+│     ├─ 调用 SDK: rm_movej_canfd() 或 rm_movep_canfd()      │
+│     └─ 队列较空时触发新推理                                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 5.7.3 参数选择建议
+
+| n_action_steps | 推理频率 | 响应性 | 效率 | 适用场景 |
+|---------------|---------|--------|------|---------|
+| 1 | 10 Hz | 最高 | 低 | 需要极快响应的任务 |
+| 5 | 2 Hz | 高 | 中 | 快速操作任务 |
+| 10 | 1 Hz | 中 | 高 | **推荐：平衡响应性和效率** |
+| 20 | 0.5 Hz | 低 | 高 | 慢速、稳定的任务 |
+| 50 | 0.2 Hz | 最低 | 最高 | 完全执行预测序列（不推荐） |
+
+**推理频率计算**：
+```
+推理频率 ≈ frequency / n_action_steps
+
+例如：
+- frequency=10, n_action_steps=10 → 推理频率 ≈ 1 Hz
+- frequency=10, n_action_steps=5  → 推理频率 ≈ 2 Hz
+- frequency=30, n_action_steps=10 → 推理频率 ≈ 3 Hz
+```
+
+#### 5.7.4 队列管理机制
+
+**队列触发条件**（`realman_client.py`）：
+```python
+# 当队列中的动作数 < n_action_steps * 0.5 时，触发新推理
+if queue_size < n_action_steps * 0.5:
+    send_observation()  # 请求新的推理
+```
+
+**队列特性**：
+- 类型：`Queue.Queue()`，无界 FIFO 队列
+- 线程安全：使用 `action_queue_lock` 保护
+- 堆积保护：通过 `chunk_size_threshold=0.5` 控制队列大小
+
+**队列稳定状态**：
+- 队列大小稳定在 `n_action_steps * 0.5` 到 `n_action_steps` 之间
+- 例如 `n_action_steps=10`，队列大小稳定在 5-10 个动作
+
+#### 5.7.5 与其他模型的对比
+
+| 模型 | action_horizon | 默认 n_action_steps | 推荐 n_action_steps |
+|------|---------------|-------------------|-------------------|
+| OpenPI (π₀/π₀.5) | 50 | 50 | 10-20 |
+| ACT | 100 | 100 | 10-20 |
+| Diffusion Policy | 16 | 8 | 4-8 |
+
+#### 5.7.6 指定方式
+
+**方式 1：在 policy_server 中指定（推荐）**
+```bash
+python -m lerobot.extensions.unified_deploy.server.policy_server \
+    --policy_type=openpi \
+    --n_action_steps=10  # ← 在 server 端指定
+```
+
+**方式 2：在 realman_client 中指定**
+```bash
+python -m lerobot.extensions.unified_deploy.client.realman_client \
+    --n_action_steps=10  # ← 在 client 端指定
+```
+
+**优先级**：server 端设置 > client 端设置
+
+#### 5.7.7 调试建议
+
+1. **初次部署**：使用 `n_action_steps=10`，观察动作流畅度
+2. **动作卡顿**：减小 `n_action_steps`（如 5），提高推理频率
+3. **动作过于激进**：增大 `n_action_steps`（如 20），降低推理频率
+4. **监控队列大小**：在日志中观察 `queue_size`，确保不为空也不堆积
+
+### 5.8 VLA 任务指令（Text Instruction）配置
+
+OpenPI 等 VLA 模型需要文本指令来指导机器人执行任务。任务指令可以在多个位置指定，遵循以下优先级规则：
+
+#### 5.8.1 优先级规则
+
+```
+Client --task > Server --prompt > train_config.default_prompt > "complete the task"
+     (最高)                                                            (最低)
+```
+
+#### 5.8.2 指定方式
+
+**方式 1：在 serve_realman_policy.py 中指定（推荐）**
+
+适用场景：单一任务的长时间测试，多个 Client 共享同一任务
+
+```bash
+python ../realman_openpi_training/serve_realman_policy.py \
+    --config=pi0_realman_inference \
+    --checkpoint=/path/to/checkpoint \
+    --prompt="pick up the yellow banana and put it in the white plate" \  # ← 在这里指定
+    --port=8000
+```
+
+**方式 2：在 realman_client 中指定（动态切换）**
+
+适用场景：需要频繁切换任务，多个 Client 执行不同任务
+
+```bash
+python -m lerobot.extensions.unified_deploy.client.realman_client \
+    --task="pick up the red cube" \  # ← 在这里指定
+    --robot_ip="192.168.1.18" \
+    --server_address=127.0.0.1:50051 \
+    ...
+```
+
+**方式 3：使用训练时的 default_prompt（自动）**
+
+如果在 `realman_config.py` 中设置了 `default_prompt`，启动时不需要指定 `--prompt`：
+
+```python
+# realman_config.py
+data=LeRobotRealmanDataConfig(
+    default_prompt="pick up the yellow banana and put it in the white plate",
+    ...
+)
+```
+
+```bash
+# 启动时不需要 --prompt，会自动使用训练配置中的 prompt
+python ../realman_openpi_training/serve_realman_policy.py \
+    --config=pi0_realman_pytorch \
+    --checkpoint=/path/to/checkpoint \
+    --port=8000
+```
+
+#### 5.8.3 验证当前使用的 prompt
+
+**查看 OpenPI 服务日志**：
+```
+策略配置:
+  default_prompt: pick up the yellow banana and put it in the white plate
+  use_delta_actions: True
+```
+
+**查看 PolicyServer 日志**：
+```
+[OpenPIAdapter] 服务端元数据:
+  default_prompt: pick up the yellow banana and put it in the white plate
+```
+
+**查看 Client 日志**：
+```
+[Client] 已从 Server 获取配置:
+  任务: pick up the yellow banana and put it in the white plate
+```
+
+#### 5.8.4 注意事项
+
+1. **Prompt 风格一致性**：推理时的 prompt 应与训练时的风格一致
+2. **Prompt 长度**：建议 < 20 个单词，简洁明确
+3. **语言一致性**：使用训练时的语言（英文/中文），不要混用
+4. **传统策略兼容性**：ACT/Diffusion 等传统策略不需要 task 参数，框架会自动处理
+
+---
+
+## 6. 动作空间说明
+
+### 6.1 State 维度
+
+Realman RM75-6FB 的 state 包含 14 维：
+
+| 索引 | 名称 | 单位 | 说明 |
+|------|------|------|------|
+| 0-6 | joint_1 ~ joint_7 | rad | 7 个关节角度 |
+| 7 | gripper_open | [0, 1] | 夹爪开合度（0=闭合，1=完全打开） |
+| 8-10 | eef_pos_x/y/z | m | 末端执行器位置 |
+| 11-13 | eef_rot_euler_x/y/z | rad | 末端执行器姿态（欧拉角） |
+
+**注意**：OpenPI 模型只使用前 8 维（7 joints + 1 gripper）。
+
+### 6.2 Action 维度
+
+模型输出的 action 为 8 维：
+
+| 索引 | 名称 | 模式 | 说明 |
+|------|------|------|------|
+| 0-6 | joint_1 ~ joint_7 | Delta | 关节角度变化量（rad） |
+| 7 | gripper | Absolute | 目标夹爪开合度 [0, 1] |
+
+### 6.3 Delta vs Absolute 模式
+
+OpenPI 使用混合模式：
+
+```python
+# Delta mask 定义
+delta_mask = make_bool_mask(7, -1)  # [True, True, True, True, True, True, True, False]
+```
+
+| 维度 | 模式 | 计算方式 | 执行方式 |
+|------|------|----------|----------|
+| 0-6 (joints) | Delta | `delta = action - state` | `target = state + delta` |
+| 7 (gripper) | Absolute | `target = action` | 直接使用 action 值 |
+
+**为什么夹爪用 Absolute？**
+- 夹爪状态是离散的（开/闭），delta 模式容易累积误差
+- Absolute 模式可以直接指定目标状态，更稳定
+
+### 6.4 单位说明
+
+| 量 | 训练/推理单位 | 机械臂 SDK 单位 | 转换 |
+|----|--------------|----------------|------|
+| 关节角度 | rad | rad | 无需转换 |
+| 夹爪开合 | [0, 1] | [0, 1000] | × 1000 |
+| 末端位置 | m | mm | × 1000 |
+| 末端姿态 | rad | rad | 无需转换 |
+
+**RoboCOIN unified_deploy 会自动处理单位转换**，无需手动转换。
+
+### 6.5 Action Horizon 与 Action Dim
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `action_horizon` | 50 | 每次推理预测 50 步动作 |
+| `action_dim` | 32 | 模型内部动作维度（固定） |
+| 实际使用维度 | 8 | 只使用前 8 维（7 joints + 1 gripper） |
+
+模型输出 shape: `[action_horizon, action_dim]` = `[50, 32]`，实际使用 `[:, :8]`。
+
+---
+
+## 7. 常见问题
+
+### Q1: 训练时报错 "norm_stats.json not found"
+
+**原因**：未计算归一化统计量。
+
+**解决**：
+```bash
+cd openpi
+uv run ../realman_openpi_training/compute_norm_stats.py \
+    --config-name pi0_realman_pytorch \
+    --dataset-path /path/to/your/dataset
+```
+
+### Q2: 训练时报错 "KeyError: 'observation.images.cam0_depth'"
+
+**原因**：数据集包含深度图，但 norm_stats 验证时尝试检查深度图统计量。
+
+**解决**：这个问题已在最新版本中修复。深度图会被自动过滤，不会影响训练。如果仍然遇到，请确保使用最新的 `realman_config.py`。
+
+### Q3: 推理时动作幅度过大或过小
+
+**可能原因**：
+1. 训练时和推理时的 `use_delta_joint_actions` 设置不一致
+2. 数据集未进行 action 转换（见 2.1 节）
+3. norm_stats 计算错误
+
+**排查步骤**：
+1. 确认训练配置中 `use_delta_joint_actions=True`
+2. 确认推理配置中也是 `use_delta_joint_actions=True`
+3. 检查数据集是否已转换（原始 delta 应该很小，约 0.01-0.02 rad）
+4. 重新计算 norm_stats
+
+### Q4: 显存不足 (OOM)
+
+**解决方案**：
+
+1. **减小 batch_size**：
+   ```python
+   # 在 realman_config.py 中修改
+   batch_size=4  # 从 8 减小到 4
+   ```
+
+2. **使用 LoRA 微调**：
+   ```bash
+   uv run ../realman_openpi_training/train.py pi0_realman_lora --exp_name=my_exp
+   ```
+
+3. **设置显存优化环境变量**：
+   ```bash
+   PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run ...
+   ```
+
+### Q5: 如何从 checkpoint 恢复训练？
+
+```bash
+uv run ../realman_openpi_training/train.py pi0_realman_pytorch \
+    --exp_name=my_exp \
+    --resume
+```
+
+训练会自动从最新的 checkpoint 恢复。
+
+### Q6: 如何使用多任务数据集？
+
+1. 确保数据集的 `meta/tasks.jsonl` 包含任务描述
+2. 配置 `prompt_from_task=True`：
+   ```python
+   data=LeRobotRealmanDataConfig(
+       repo_id="local/multi_task_dataset",
+       prompt_from_task=True,
+       default_prompt=None,
+   ),
+   ```
+
+### Q7: 训练和推理的相机顺序不一致怎么办？
+
+**关键**：训练和推理时的 `image_keys` 顺序必须一致！
+
+如果训练时：
+```python
+image_keys=("observation.images.cam1_rgb", "observation.images.cam0_rgb")
+```
+
+推理时也必须按相同顺序传入图像：
+```python
+images={
+    "base_0_rgb": cam1_image,      # 基座相机
+    "left_wrist_0_rgb": cam0_image,  # 腕部相机
+}
+```
+
+### Q8: 如何评估训练效果？
+
+1. **查看训练曲线**：使用 WandB 查看 loss 曲线
+2. **离线评估**：使用 RoboCOIN 的离线评估功能
+3. **真机测试**：部署到真机进行实际测试
+
+### Q9: 训练时报错 "norm_stats.json not found"，但我已经计算过了？
+
+**⚠️ 这是一个常见的配置陷阱！**
+
+**问题现象**：
+- 你运行了 `compute_norm_stats.py`，脚本显示成功保存
+- 但训练时仍然报错找不到 `norm_stats.json`
+
+**根本原因**：`repo_id` 配置不一致导致路径不匹配。
+
+**路径生成逻辑**：
+```python
+# compute_norm_stats.py 的输出路径逻辑
+output_dir = config.assets_dirs / data_config.repo_id
+# 例如：openpi/assets/pi0_realman_pytorch/local/realman_teleop_xxx
+```
+
+**典型错误场景**：
+
+| 配置文件中的 repo_id | 实际保存路径 | 结果 |
+|---------------------|-------------|------|
+| `realman_teleop_130_openpi` | `assets/.../realman_teleop_130_openpi/` | ✅ 匹配 |
+| `realman_teleop_130_openpi` | `assets/.../local/realman_teleop_0111_xxx/` | ❌ 不匹配！ |
+
+**排查步骤**：
+
+1. **检查 norm_stats 实际保存位置**：
+   ```bash
+   find openpi/assets -name "norm_stats.json"
+   ```
+
+2. **检查配置文件中的 repo_id**：
+   ```bash
+   grep "repo_id" realman_openpi_training/realman_config.py
+   ```
+
+3. **确认两者路径一致**
+
+**解决方案**：
+
+**方案 1：修改配置文件中的 repo_id（推荐）**
+
+确保 `realman_config.py` 中的 `repo_id` 与你期望的路径一致：
+
+```python
+data=LeRobotRealmanDataConfig(
+    # repo_id 决定了 norm_stats.json 的查找路径
+    repo_id="local/realman_teleop_0111_right_plate_50",  # ← 必须与保存路径一致
+    local_root="/path/to/your/dataset",
+    ...
+),
+```
+
+**方案 2：使用 --output-path 参数明确指定**
+
+运行 `compute_norm_stats.py` 时显式指定输出路径：
+
+```bash
+uv run ../realman_openpi_training/compute_norm_stats.py \
+    --config-name pi0_realman_pytorch \
+    --dataset-path /path/to/your/dataset \
+    --output-path openpi/assets/pi0_realman_pytorch/local/your_dataset_name
+```
+
+**最佳实践**：
+
+1. **统一命名**：让 `repo_id` 与数据集目录名保持一致
+2. **使用 `local/` 前缀**：本地数据集建议使用 `local/dataset_name` 格式
+3. **修改配置后重新计算**：如果修改了 `repo_id`，需要重新运行 `compute_norm_stats.py`
+
+### Q10: PyTorch 训练报错 "transformers_replace is not installed correctly"
+
+**问题现象**：
+```
+ValueError: transformers_replace is not installed correctly. 
+Please install it with `uv pip install transformers==4.53.2` and 
+`cp -r ./src/openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/`.
+```
+
+**原因**：OpenPI 的 PyTorch 训练模式需要修改过的 transformers 库文件（用于支持 PaliGemma 等模型的特殊功能）。
+
+**解决方案**：
+
+1. **确认 transformers 版本**：
+   ```bash
+   conda activate openpi
+   python -c "import transformers; print(transformers.__version__)"
+   # 应该输出: 4.53.2
+   ```
+
+2. **复制修改过的模型文件到 site-packages**：
+   ```bash
+   # 如果使用 conda 环境
+   cp -rv /workspaces/lerobot_training/openpi/src/openpi/models_pytorch/transformers_replace/models/* \
+       /workspaces/_conda/envs/openpi/lib/python3.11/site-packages/transformers/models/
+   
+   # 如果使用 uv 虚拟环境
+   cp -rv ./src/openpi/models_pytorch/transformers_replace/* \
+       .venv/lib/python3.11/site-packages/transformers/
+   ```
+
+**⚠️ 注意**：
+- 这个操作需要在**每个新的服务器/环境**上执行一次
+- 如果你在多台服务器上训练，需要分别在每台服务器上执行此操作
+- 执行后会覆盖 `gemma`、`paligemma`、`siglip` 三个模型目录
+
+### Q11: 数据加载时报错 "TypeError: stack(): argument 'tensors' must be tuple of Tensors, not Column"
+
+**问题现象**：
+```
+TypeError: stack(): argument 'tensors' (position 1) must be tuple of Tensors, not Column
+```
+
+**原因**：HuggingFace `datasets` 库 4.x 版本的 API 变化。`ds["column"]` 返回 `Column` 对象而非 list，与 `torch.stack()` 不兼容。
+
+**解决方案**：
+
+此问题已在 `realman_openpi_training/train.py` 中通过 Monkey Patch 修复。确保使用最新版本的训练脚本即可。
+
+**技术细节**：
+- `train.py` 中的 `patch_data_loader_for_local_datasets()` 函数会自动处理此兼容性问题
+- 修复方式：临时替换 `torch.stack` 函数，使其能正确处理 `Column` 对象
+
+### Q12: 数据集加载非常慢（10+ 分钟）
+
+**问题现象**：
+- 训练启动后，显示 `Loading dataset shards: 100%` 后长时间无响应
+- 进程 CPU 占用 100%，但没有日志输出
+
+**原因**：LeRobot 数据集初始化时会进行时间戳同步检查（`check_timestamps_sync`），对于大数据集需要加载全部时间戳数据。
+
+**解决方案**：
+
+此问题已在 `realman_openpi_training/train.py` 中优化。训练脚本会自动跳过时间戳检查，大幅加速数据加载。
+
+**优化效果**：
+
+| 阶段 | 优化前 | 优化后 |
+|------|--------|--------|
+| 时间戳数据加载 | 5-10 分钟 | 跳过 |
+| 时间戳检查 | 1-2 分钟 | 跳过 |
+| 总初始化时间 | 10-15 分钟 | 1-2 分钟 |
+
+**⚠️ 注意**：
+- 时间戳检查是 LeRobot 官方的数据质量验证机制
+- 跳过检查后，训练仍能正常进行（每个样本的时间戳仍可按需获取）
+- 如果需要验证数据集质量，可以单独运行验证脚本
+
+### Q13: 多卡训练报错 "Normalization stats not found"
+
+**问题现象**：
+```
+ValueError: Normalization stats not found. 
+Make sure to run `scripts/compute_norm_stats.py --config-name=<your-config>`.
+```
+
+**原因**：不同配置（如 `pi0_realman_pytorch` vs `pi05_realman_pytorch`）的 norm_stats 存储路径不同。
+
+**解决方案**：
+
+1. **检查 norm_stats 存储位置**：
+   ```bash
+   # 查看已有的 norm_stats
+   find openpi/assets -name "norm_stats.json"
+   ```
+
+2. **为对应配置计算 norm_stats**：
+   ```bash
+   cd openpi
+   
+   # 为 pi05_realman_pytorch 计算
+   python ../realman_openpi_training/compute_norm_stats.py \
+       --config-name pi05_realman_pytorch \
+       --dataset-path /path/to/your/dataset \
+       --output-path openpi/assets/pi05_realman_pytorch/your_dataset_repo_id
+   ```
+
+3. **或者复制已有的 norm_stats**（如果数据格式相同）：
+   ```bash
+   mkdir -p openpi/assets/pi05_realman_pytorch/realman_teleop_130_openpi_0120_pi05
+   cp openpi/assets/pi0_realman_pytorch/realman_teleop_130_openpi_0120/norm_stats.json \
+      openpi/assets/pi05_realman_pytorch/realman_teleop_130_openpi_0120_pi05/
+   ```
+
+**路径对应关系**：
+
+| 配置名 | norm_stats 路径 |
+|--------|----------------|
+| `pi0_realman_pytorch` | `assets/pi0_realman_pytorch/<repo_id>/norm_stats.json` |
+| `pi05_realman_pytorch` | `assets/pi05_realman_pytorch/<repo_id>/norm_stats.json` |
+
+---
+
+## 8. 参考资料
+
+### 8.1 相关仓库
+
+| 仓库 | 说明 | 链接 |
+|------|------|------|
+| OpenPI | π₀/π₀.5 官方实现 | https://github.com/Physical-Intelligence/openpi |
+| LeRobot | HuggingFace 机器人学习库 | https://github.com/huggingface/lerobot |
+| RoboCOIN | 本项目的统一部署框架 | 本地 `RoboCOIN/` 目录 |
+
+### 8.2 论文
+
+- **π₀**: [π₀: A Vision-Language-Action Flow Model for General Robot Control](https://arxiv.org/abs/2410.24164)
+- **π₀.5**: π₀ 的改进版本，支持更长的动作序列和更好的泛化能力
+
+### 8.3 数据集格式
+
+- [LeRobot Dataset Format v2.1](https://huggingface.co/docs/lerobot/dataset_format)
+
+### 8.4 本项目文档
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| 训练模块 README | `realman_openpi_training/README.md` | 训练模块快速入门 |
+| RoboCOIN 部署文档 | `RoboCOIN/docs/training_pipeline.md` | 统一部署框架说明 |
+| OpenPI 远程推理 | `openpi/docs/remote_inference.md` | OpenPI 官方推理文档 |
+
+---
+
+## 附录 A: 完整配置示例
+
+### A.1 单任务训练配置
+
+```python
+_config.TrainConfig(
+    name="pi0_realman_single_task",
+    model=pi0_config.Pi0Config(action_dim=32, action_horizon=50),
+    data=LeRobotRealmanDataConfig(
+        repo_id="local/realman_pick_place",
+        local_root="/data/datasets/realman_pick_place",
+        use_delta_joint_actions=True,
+        default_prompt="pick up the red cube and place it in the blue box",
+        prompt_from_task=False,
+        image_keys=(
+            "observation.images.cam1_rgb",  # 基座相机
+            "observation.images.cam0_rgb",  # 腕部相机
+        ),
+    ),
+    pytorch_weight_path="data/openpi-assets/checkpoints/pi0_droid_pytorch",
+    num_train_steps=30000,
+    batch_size=8,
+    lr_schedule=_optimizer.CosineDecaySchedule(
+        warmup_steps=1000, 
+        peak_lr=5e-5, 
+        decay_steps=30000, 
+        decay_lr=5e-6
+    ),
+    ema_decay=0.999,
+)
+```
+
+### A.2 多任务训练配置
+
+```python
+_config.TrainConfig(
+    name="pi05_realman_multi_task",
+    model=pi0_config.Pi0Config(pi05=True, action_dim=32, action_horizon=50),
+    data=LeRobotRealmanDataConfig(
+        repo_id="local/realman_multi_task",
+        local_root="/data/datasets/realman_multi_task",
+        use_delta_joint_actions=True,
+        prompt_from_task=True,  # 从数据集读取任务描述
+        default_prompt=None,
+        image_keys=(
+            "observation.images.cam1_rgb",
+            "observation.images.cam0_rgb",
+        ),
+    ),
+    pytorch_weight_path="data/openpi-assets/checkpoints/pi05_droid_pytorch",
+    num_train_steps=50000,
+    batch_size=8,
+    lr_schedule=_optimizer.CosineDecaySchedule(
+        warmup_steps=2000, 
+        peak_lr=3e-5, 
+        decay_steps=50000, 
+        decay_lr=3e-6
+    ),
+    ema_decay=0.999,
+)
+```
+
+---
+
+*文档结束*

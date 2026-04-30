@@ -1,0 +1,86 @@
+W0330 10:16:57.871818 350818 torch/distributed/run.py:766] 
+W0330 10:16:57.871818 350818 torch/distributed/run.py:766] *****************************************
+W0330 10:16:57.871818 350818 torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0330 10:16:57.871818 350818 torch/distributed/run.py:766] *****************************************
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[PATCH] 已 patch get_safe_version（离线模式）
+[PATCH] 已在类级别 patch get_data_file_path + get_video_file_path
+[PATCH] 已 patch load_metadata（跳过慢速 episodes_stats）
+[PATCH] patches applied: 本地数据集 + datasets4.x兼容 + 跳过时间戳检查 + pyav 视频后端 + 离线HF
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+[INFO] 已注册配置: ['pi0_right_arm_pytorch']
+10:17:15.002 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+10:17:15.003 [I] Config: pi0_right_arm_pytorch (train.py:615)
+10:17:15.003 [I] ===== Pi0 右臂抓取训练启动 ===== (train.py:614)
+10:17:15.003 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+10:17:15.003 [I] Config: pi0_right_arm_pytorch (train.py:615)
+10:17:15.003 [I] Exp: right_arm_box_pick_v1 (train.py:616)
+10:17:15.004 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/openpi-main/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+10:17:15.004 [I] Checkpoint dir: /share/0xyj/model3_openpi0.5/openpi-main/checkpoints/pi0_right_arm_pytorch/right_arm_box_pick_v1 (train.py:617)
+10:17:15.215 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:17:15.215 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:17:15.215 [I] GPU 0: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:17:15.215 [I] GPU 1: NVIDIA A800-SXM4-80GB (85.2GB) (train.py:620)
+10:17:15.296 [I] Norm stats not found in /share/0xyj/model3_openpi0.5/my_pi0_training/assets/pi0_right_arm_pytorch/local/right_arm_box_pick, skipping. (config.py:199)
+10:17:15.296 [I] 本地数据集: local/right_arm_box_pick -> /share/0xyj/model3_openpi0.5/lerobot_dataset (train.py:443)
+10:17:15.406 [I] Norm stats not found in /share/0xyj/model3_openpi0.5/my_pi0_training/assets/pi0_right_arm_pytorch/local/right_arm_box_pick, skipping. (config.py:199)
+10:17:15.482 [I] Norm stats not found in /share/0xyj/model3_openpi0.5/my_pi0_training/assets/pi0_right_arm_pytorch/local/right_arm_box_pick, skipping. (config.py:199)
+10:17:15.482 [I] data_config: DataConfig(repo_id='local/right_arm_box_pick', asset_id='local/right_arm_box_pick', norm_stats=None, repack_transforms=Group(inputs=[RepackTransform(structure={'images': {'cam_high': 'observation.images.cam_high', 'cam_right_wrist': 'observation.images.cam_right_wrist', 'cam_left_wrist': 'observation.images.cam_left_wrist'}, 'state': 'observation.state', 'actions': 'action'})], outputs=[]), data_transforms=Group(inputs=(MyRobotInputs(image_keys=('cam_high', 'cam_right_wrist', 'cam_left_wrist')), DeltaActions(mask=(True, True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, False)), MyRobotOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt='the right arm picks up the box and places it back to its original position'), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7f895c4d25d0>, discrete_state_input=False), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=False, action_sequence_keys=('action',), prompt_from_task=False, rlds_data_dir=None, action_space=None, datasets=()) (data_loader.py:243)
+[PATCH] 使用本地数据集: /share/0xyj/model3_openpi0.5/lerobot_dataset
+[PATCH] 已 patch load_metadata: 86 episodes，跳过 episodes_stats 读取
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 628, in <module>
+[rank1]:     main(_config.cli())
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 624, in main
+[rank1]:     train_loop(config)
+[rank1]:   File "/share/0xyj/model3_openpi0.5/my_pi0_training/train.py", line 467, in train_loop
+[rank1]:     loader = _data_loader.create_data_loader(config, framework="pytorch", shuffle=True)
+[rank1]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 256, in create_data_loader
+[rank1]:     return create_torch_data_loader(
+[rank1]:            ^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 303, in create_torch_data_loader
+[rank1]:     dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
+[rank1]:               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/share/0xyj/model3_openpi0.5/openpi-main/src/openpi/training/data_loader.py", line 177, in transform_dataset
+[rank1]:     raise ValueError(
+[rank1]: ValueError: Normalization stats not found. Make sure to run `scripts/compute_norm_stats.py --config-name=<your-config>`.
+wandb: Currently logged in as: 1459076239 (1459076239-111) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+W0330 10:17:18.004921 350818 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 350927 closing signal SIGTERM
+E0330 10:17:18.118893 350818 torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 1 (pid: 350928) of binary: /share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/python3
+Traceback (most recent call last):
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 892, in main
+    run(args)
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 883, in run
+    elastic_launch(
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 139, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/share/0xyj/model3_openpi0.5/openpi-main/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 270, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/share/0xyj/model3_openpi0.5/my_pi0_training/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-03-30_10:17:18
+  host      : aibox-rbb2050829b6-9df9dc7db-wz6vj
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 350928)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
