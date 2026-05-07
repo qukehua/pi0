@@ -1,38 +1,51 @@
 #!/usr/bin/env python3
-"""计算 OpenPI 归一化统计量 (norm_stats) - 头部相机版本
+"""Compute OpenPI norm_stats for the right-arm head-camera config.
 
-使用方法:
-    cd /share/0xyj/model3_openpi0.5/openpi-main
-    JAX_PLATFORMS=cpu /share/0xyj/model3_openpi0.5/openpi-main/.venv/bin/python3.11 \
-        /share/0xyj/model3_openpi0.5/my_pi0_training/compute_norm_stats_head_cam.py
+This version intentionally matches the official OpenPI stats path:
+raw LeRobot sample -> repack transforms -> data transforms -> RunningStats.
+
+For pi0_right_arm_head_cam, data transforms include DeltaActions, so the
+saved action statistics are computed in delta action space for the first
+7 joint dimensions, while the gripper dimension remains absolute.
 """
 
-import sys
-import os
 import argparse
+import os
 from pathlib import Path
+import sys
 
-# 路径设置
-_MY_DIR = Path("/share/0xyj/model3_openpi0.5/my_pi0_training")
-_OPENPI_SRC = Path("/share/0xyj/model3_openpi0.5/openpi-main/src")
+os.environ.setdefault("JAX_PLATFORMS", "cpu")
+
+_MY_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _MY_DIR.parent
+_OPENPI_SRC = _PROJECT_ROOT / "openpi-main" / "src"
+
 for _p in [str(_MY_DIR), str(_OPENPI_SRC)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-os.environ.setdefault("JAX_PLATFORMS", "cpu")
-
-# 复用 train_right_arm_head_cam.py 中的 patch
+# Reuse the training-time patches for local LeRobot loading and offline mode.
 import train_right_arm_head_cam
+
 train_right_arm_head_cam.apply_patches()
 _local_root_registry = train_right_arm_head_cam._local_root_registry
 
-import openpi.training.config as _config
+import numpy as np
+import tqdm
+
 import openpi.shared.normalize as _normalize
+import openpi.training.config as _config
 import openpi.training.data_loader as _data_loader
+import openpi.transforms as _transforms
 from my_config_right_arm_head_cam import get_my_configs
 
 
-def register_configs():
+class RemoveStrings(_transforms.DataTransformFn):
+    def __call__(self, x: dict) -> dict:
+        return {k: v for k, v in x.items() if not np.issubdtype(np.asarray(v).dtype, np.str_)}
+
+
+def register_configs() -> None:
     for cfg in get_my_configs():
         if cfg.name not in _config._CONFIGS_DICT:
             _config._CONFIGS.append(cfg)
@@ -42,112 +55,77 @@ def register_configs():
 register_configs()
 
 
-def compute_norm_stats(config_name: str, dataset_path: str, output_path: str | None = None):
-    print(f"[INFO] 计算 norm_stats: config={config_name}")
-    print(f"[INFO] 数据集路径: {dataset_path}")
+def compute_norm_stats(config_name: str, dataset_path: str, output_path: str | None = None) -> str:
+    print(f"[INFO] Computing norm_stats: config={config_name}")
+    print(f"[INFO] Dataset path: {dataset_path}")
 
     if config_name not in _config._CONFIGS_DICT:
-        raise ValueError(f"配置 '{config_name}' 未找到。可用: {list(_config._CONFIGS_DICT.keys())}")
+        raise ValueError(f"Config '{config_name}' not found. Available: {list(_config._CONFIGS_DICT.keys())}")
 
     config = _config._CONFIGS_DICT[config_name]
-    data_config_factory = config.data
+    data_config = config.data.create(config.assets_dirs, config.model)
+    repo_id = data_config.repo_id
+    if repo_id is None:
+        raise ValueError("Data config repo_id is None")
 
-    # 注册本地数据集路径
-    tmp_dc = data_config_factory.create(config.assets_dirs, config.model)
-    repo_id = tmp_dc.repo_id
     _data_loader._local_root_registry[repo_id] = dataset_path
     _local_root_registry[repo_id] = dataset_path
-    print(f"[INFO] 注册本地路径: {repo_id} -> {dataset_path}")
+    print(f"[INFO] Registered local dataset: {repo_id} -> {dataset_path}")
 
-    # 创建数据加载器（不 shuffle，遍历全数据集）
-    from lerobot.common.datasets import lerobot_dataset
-    import torch
-    import numpy as np
-
-    root = Path(dataset_path)
-    dataset_meta = lerobot_dataset.LeRobotDatasetMetadata(repo_id, root=root)
-    dataset = lerobot_dataset.LeRobotDataset(
-        repo_id, root=root,
-        delta_timestamps={
-            key: [t / dataset_meta.fps for t in range(config.model.action_horizon)]
-            for key in tmp_dc.action_sequence_keys
-        },
-        video_backend="pyav",
+    dataset = _data_loader.create_torch_dataset(data_config, config.model.action_horizon, config.model)
+    dataset = _data_loader.TransformedDataset(
+        dataset,
+        [
+            *data_config.repack_transforms.inputs,
+            *data_config.data_transforms.inputs,
+            RemoveStrings(),
+        ],
     )
 
-    print(f"[INFO] 数据集大小: {len(dataset)} 样本")
+    batch_size = config.batch_size
+    num_batches = len(dataset) // batch_size
+    if num_batches < 1:
+        raise RuntimeError(f"Dataset has {len(dataset)} samples, smaller than batch_size={batch_size}")
 
-    # 应用数据转换并收集统计量
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=False
+    print(f"[INFO] Dataset size: {len(dataset)} samples")
+    print("[INFO] Stats are computed after repack/data transforms; actions are in delta space.")
+
+    data_loader = _data_loader.TorchDataLoader(
+        dataset,
+        local_batch_size=batch_size,
+        num_workers=config.num_workers,
+        shuffle=False,
+        num_batches=num_batches,
+        framework="torch",
     )
 
-    # 收集 state 和 action 数据用于统计
-    all_states = []
-    all_actions = []
+    keys = ["state", "actions"]
+    stats = {key: _normalize.RunningStats() for key in keys}
+    for batch in tqdm.tqdm(data_loader, total=num_batches, desc="Computing stats"):
+        for key in keys:
+            stats[key].update(np.asarray(batch[key]))
 
-    print("[INFO] 遍历数据集收集统计量...")
-    import tqdm
-    for batch in tqdm.tqdm(data_loader, desc="Computing stats"):
-        # 直接提取 state 和 action
-        state = batch.get("observation.state")
-        action = batch.get("action")
-        if state is not None:
-            s = state.numpy() if isinstance(state, torch.Tensor) else np.array(state)
-            all_states.append(s[..., :8])  # 只取前8维
-        if action is not None:
-            a = action.numpy() if isinstance(action, torch.Tensor) else np.array(action)
-            if a.ndim == 3:
-                a = a[:, 0, :]  # 取第一帧
-            all_actions.append(a[..., :8])  # 只取前8维
+    norm_stats = {key: stat.get_statistics() for key, stat in stats.items()}
 
-    if not all_states:
-        raise RuntimeError("未能收集到数据，请检查数据集路径和格式")
-
-    states  = np.concatenate(all_states,  axis=0)
-    actions = np.concatenate(all_actions, axis=0)
-
-    def compute_stats(data):
-        return {
-            "mean": data.mean(axis=0).tolist(),
-            "std":  data.std(axis=0).tolist(),
-            "min":  data.min(axis=0).tolist(),
-            "max":  data.max(axis=0).tolist(),
-            "q01":  np.quantile(data, 0.01, axis=0).tolist(),
-            "q99":  np.quantile(data, 0.99, axis=0).tolist(),
-        }
-
-    norm_stats = {
-        "norm_stats": {
-            "state":   compute_stats(states),
-            "actions": compute_stats(actions),
-        }
-    }
-
-    # 确定输出路径
     if output_path is None:
-        assets_dir = Path("/share/0xyj/model3_openpi0.5/openpi-main/assets")
-        out_dir = assets_dir / config_name / repo_id
+        out_dir = config.assets_dirs / repo_id
     else:
         out_dir = Path(output_path)
 
-    out_dir.mkdir(parents=True, exist_ok=True)
+    _normalize.save(out_dir, norm_stats)
     out_file = out_dir / "norm_stats.json"
 
-    import json
-    with open(out_file, "w") as f:
-        json.dump(norm_stats, f, indent=2)
-
-    print(f"[INFO] norm_stats 已保存: {out_file}")
-    print(f"[INFO] state  mean: {[f'{v:.4f}' for v in norm_stats['norm_stats']['state']['mean']]}")
-    print(f"[INFO] action mean: {[f'{v:.4f}' for v in norm_stats['norm_stats']['actions']['mean']]}")
+    print(f"[INFO] Saved norm_stats: {out_file}")
+    print(f"[INFO] state  mean: {[f'{v:.4f}' for v in norm_stats['state'].mean]}")
+    print(f"[INFO] action mean: {[f'{v:.4f}' for v in norm_stats['actions'].mean]}")
+    print("[INFO] action dims 0-6 are delta stats; dim 7 remains absolute gripper stats.")
     return str(out_file)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="计算 OpenPI 归一化统计量 - 头部相机版本")
-    parser.add_argument("--config-name", default="pi0_right_arm_head_cam", help="训练配置名称")
-    parser.add_argument("--dataset-path", default="/share/0xyj/model3_openpi0.5/lerobot_dataset", help="数据集路径")
-    parser.add_argument("--output-path", default=None, help="自定义输出路径（可选）")
+    parser = argparse.ArgumentParser(description="Compute OpenPI norm_stats for the head-camera config")
+    parser.add_argument("--config-name", default="pi0_right_arm_head_cam", help="Training config name")
+    parser.add_argument("--dataset-path", default="/share/0xyj/model3_openpi0.5/lerobot_dataset", help="Dataset path")
+    parser.add_argument("--output-path", default=None, help="Optional output directory")
     args = parser.parse_args()
     compute_norm_stats(args.config_name, args.dataset_path, args.output_path)
