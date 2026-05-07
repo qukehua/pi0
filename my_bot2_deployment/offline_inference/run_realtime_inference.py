@@ -84,7 +84,7 @@ FIXED_CORRECTION_DEG = np.array([
 
 FIXED_CORRECTION_RAD = FIXED_CORRECTION_DEG * np.pi / 180
 
-DEFAULT_PROMPT = "use the right dexterous hand to pick up the box and place it down"
+DEFAULT_PROMPT = "right arm pick and place task"
 
 JOINT_NAMES_8D = [
     "right_joint_0", "right_joint_1", "right_joint_2",
@@ -178,7 +178,9 @@ class RightArmOutputs(_transforms.DataTransformFn):
 
 def apply_correction(model_delta: np.ndarray) -> np.ndarray:
     """应用校正 - 始终执行校正"""
-    return model_delta - FIXED_CORRECTION_RAD
+    corrected = np.asarray(model_delta, dtype=np.float32).copy()
+    corrected[:7] -= FIXED_CORRECTION_RAD[:7]
+    return corrected
 
 
 # ════════════════════════════════════════════════════════════════
@@ -217,7 +219,7 @@ def build_policy(
 
     transforms = [
         RightArmInputs(),
-        _transforms.Normalize(norm_stats, use_quantiles=True),
+        _transforms.Normalize(norm_stats, use_quantiles=False),
         PadStateTo32(),
         _transforms.ResizeImages(224, 224),
         _transforms.TokenizePrompt(
@@ -228,7 +230,7 @@ def build_policy(
     delta_mask = _transforms.make_bool_mask(7, -1)
 
     output_transforms = [
-        _transforms.Unnormalize(norm_stats, use_quantiles=True, strict=False),
+        _transforms.Unnormalize(norm_stats, use_quantiles=False),
         _transforms.AbsoluteActions(delta_mask),
         RightArmOutputs(),
     ]
@@ -530,12 +532,12 @@ class RealtimeInferenceClient:
         joints_right_rad = [deg * math.pi / 180.0 for deg in joints_right[:7]]
 
         # 构造8维状态（弧度）
-        state_full = np.array(joints_right_rad + [dexhand_right * math.pi], dtype=np.float32)
+        state_full = np.array(joints_right_rad + [float(dexhand_right)], dtype=np.float32)
 
         # ========== 打印输入状态 ==========
         print(f"\n[模型输入状态 - 8维右臂]")
         for i, name in enumerate(JOINT_NAMES_8D):
-            deg = state_full[i] * 180.0 / math.pi
+            deg = state_full[i] if i == 7 else state_full[i] * 180.0 / math.pi
             print(f"  {name}: {state_full[i]:.4f} rad ({deg:.3f}°)")
 
         # ========== 构造模型输入 ==========
@@ -597,7 +599,22 @@ class RealtimeInferenceClient:
         corrected_delta_deg = corrected_delta * 180.0 / math.pi
 
         # 目标角度 = 当前状态 + 校正后的增量
-        target_action_deg = state_deg + corrected_delta_deg
+        # Realign with training semantics:
+        # result["actions"] is absolute action after AbsoluteActions.
+        model_action = np.asarray(result["actions"][0], dtype=np.float32)
+        model_delta = model_action - state_full
+        corrected_delta = apply_correction(model_delta)
+        target_action = state_full + corrected_delta
+
+        state_deg = state_full * 180.0 / math.pi
+        model_delta_deg = model_delta * 180.0 / math.pi
+        corrected_delta_deg = corrected_delta * 180.0 / math.pi
+        target_action_deg = target_action * 180.0 / math.pi
+        # Last dim is gripper [0,1], not angle.
+        state_deg[7] = state_full[7]
+        model_delta_deg[7] = model_delta[7]
+        corrected_delta_deg[7] = corrected_delta[7]
+        target_action_deg[7] = target_action[7]
 
         # ========== 打印推理结果 ==========
         print(f"\n{'='*70}")
@@ -618,7 +635,7 @@ class RealtimeInferenceClient:
             "msg_type": "action",
             "obs_seq": obs_seq,
             "joints_right": target_action_deg[:7].tolist(),
-            "dexhand_right": 1.0 if target_action_deg[7] > 30.0 else 0.0,
+            "dexhand_right": 1.0 if float(np.clip(target_action[7], 0.0, 1.0)) > 0.5 else 0.0,
             "infer_ms": inference_time * 1000,
         }
 

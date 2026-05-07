@@ -233,7 +233,7 @@ def build_policy(
     # 使用仅头部相机的输入转换
     transforms = [
         RightArmHeadcamInputs(),
-        _transforms.Normalize(norm_stats, use_quantiles=True),
+        _transforms.Normalize(norm_stats, use_quantiles=False),
         PadStateTo32(),
         _transforms.ResizeImages(224, 224),
         _transforms.TokenizePrompt(
@@ -244,7 +244,7 @@ def build_policy(
     delta_mask = _transforms.make_bool_mask(7, -1)
 
     output_transforms = [
-        _transforms.Unnormalize(norm_stats, use_quantiles=True, strict=False),
+        _transforms.Unnormalize(norm_stats, use_quantiles=False),
         _transforms.AbsoluteActions(delta_mask),
         RightArmOutputs(),
     ]
@@ -289,7 +289,9 @@ def apply_correction(model_delta: np.ndarray, use_correction: bool = True) -> np
     if not use_correction:
         return model_delta
 
-    return model_delta - FIXED_CORRECTION_RAD
+    corrected = np.asarray(model_delta, dtype=np.float32).copy()
+    corrected[:7] -= FIXED_CORRECTION_RAD[:7]
+    return corrected
 
 
 # ════════════════════════════════════════════════════════════════
@@ -524,13 +526,14 @@ def run_inference(
         total_inference_time += inference_time
 
         # 解析输出 - 模型输出的是增量动作
-        model_delta = result["actions"][0]
+        model_action = np.asarray(result["actions"][0], dtype=np.float32)
+        model_delta = model_action - state_full
 
         # 应用校正
         corrected_delta = apply_correction(model_delta, use_correction)
 
         # 计算预测状态
-        predicted_state = state_full + model_delta
+        predicted_state = model_action
         predicted_corrected = state_full + corrected_delta
 
         # 计算误差
@@ -555,6 +558,10 @@ def run_inference(
         model_delta_deg = model_delta * 180 / math.pi
         corrected_delta_deg = corrected_delta * 180 / math.pi
         action_deg = action_gt * 180 / math.pi
+        state_deg[7] = state_full[7]
+        model_delta_deg[7] = model_delta[7]
+        corrected_delta_deg[7] = corrected_delta[7]
+        action_deg[7] = action_gt[7]
 
         print_frame_summary(
             frame_idx, total_frames,

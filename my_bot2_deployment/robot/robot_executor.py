@@ -139,18 +139,23 @@ def format_images_info(images):
 # ============================================================
 class DataBuffer:
     """线程安全的数据缓冲区（FIFO队列）"""
-    def __init__(self, name: str = "buffer", max_size: int = 100):
+    def __init__(self, name: str = "buffer", max_size: int = 100, latest_only: bool = False):
         self._queue = []  # 使用队列存储多个数据
         self._lock = threading.Lock()
         self._name = name
         self._put_count = 0
         self._get_count = 0
         self._max_size = max_size
+        self._latest_only = latest_only
 
     def put(self, data) -> bool:
         """存入数据，返回是否成功"""
         with self._lock:
-            self._queue.append(data)
+            if self._latest_only:
+                # Strict latest-only: new action replaces all pending stale actions.
+                self._queue = [data]
+            else:
+                self._queue.append(data)
             # 如果队列太长，移除最旧的数据
             while len(self._queue) > self._max_size:
                 self._queue.pop(0)
@@ -163,7 +168,11 @@ class DataBuffer:
             if not self._queue:
                 self._get_count += 1
                 return None, 0
-            data = self._queue.pop(0)
+            if self._latest_only:
+                data = self._queue[-1]
+                self._queue.clear()
+            else:
+                data = self._queue.pop(0)
             self._get_count += 1
             return data, time.time_ns()
 
@@ -723,7 +732,7 @@ class RobotExecutor:
 
         # 线程安全缓冲区
         self._obs_buffer = DataBuffer("obs")
-        self._action_buffer = DataBuffer("action")
+        self._action_buffer = DataBuffer("action", latest_only=True)
 
         # 状态
         self._running = False
